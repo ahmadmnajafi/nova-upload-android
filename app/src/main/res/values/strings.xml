@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nova آپلود</string>
+    <string name="login_title">ورود به Nova آپلود</string>
+    <string name="phone_hint">۰۹۱۲۱۲۳۴۵۶۷</string>
+    <string name="code_hint">کد ۴ رقمی</string>
+    <string name="send_code">دریافت کد</string>
+    <string name="verify_code">ورود</string>
+    <string name="pick_category">دسته‌بندی را انتخاب کنید</string>
+    <string name="pick_files">انتخاب از گالری</string>
+    <string name="start_upload">شروع آپلود</string>
+    <string name="logout">خروج</string>
+    <string name="share_ready">فایل‌های اشتراک‌گذاری‌شده آماده‌اند. دسته را انتخاب کنید.</string>
+    <string name="no_cats">هنوز دسته‌بندی ندارید. اول در پنل وب یک دسته بسازید.</string>
+</resources>
