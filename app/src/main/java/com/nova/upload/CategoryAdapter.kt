@@ -24,6 +24,8 @@ class CategoryAdapter(
         notifyDataSetChanged()
     }
 
+    fun selectedName(): String = items.firstOrNull { it.id == selectedId }?.name.orEmpty()
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val binding = ItemCategoryBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return VH(binding)

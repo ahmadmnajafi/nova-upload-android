@@ -39,6 +39,13 @@ data class AppRelease(
     val notes: String
 )
 
+data class DuplicateFile(
+    val title: String,
+    val categories: String,
+    val thumbUrl: String,
+    val mime: String
+)
+
 class ApiClient(
     private val baseUrl: String = BuildConfig.API_BASE
 ) {
@@ -163,6 +170,51 @@ class ApiClient(
             apkUrl = data.optString("apk_url"),
             notes = data.optString("notes")
         )
+    }
+
+    fun findDuplicate(token: String, md5: String): DuplicateFile? {
+        val data = post(
+            form(
+                "action" to "nova_upload_app_dup",
+                "app_token" to token,
+                "md5" to md5
+            ),
+            token
+        )
+        if (!data.optBoolean("duplicate")) return null
+        return DuplicateFile(
+            title = data.optString("title").ifBlank { "فایل موجود" },
+            categories = data.optString("categories").ifBlank { "بدون دسته‌بندی" },
+            thumbUrl = data.optString("thumb_url"),
+            mime = data.optString("mime")
+        )
+    }
+
+    fun fetchPreview(url: String): ByteArray? {
+        if (!url.startsWith("https://")) return null
+        val host = try {
+            java.net.URI(url).host
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        val apiHost = try {
+            java.net.URI(baseUrl).host
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        if (!host.equals(apiHost, ignoreCase = true)) return null
+        val req = Request.Builder().url(url).get().build()
+        return try {
+            client.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) return null
+                val body = res.body ?: return null
+                val length = body.contentLength()
+                if (length > 4L * 1024L * 1024L) return null
+                body.bytes()
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     fun logout(token: String) {

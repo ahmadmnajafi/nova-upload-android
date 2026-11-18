@@ -1,12 +1,20 @@
 package com.nova.upload
 
+import android.app.Dialog
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,14 +26,18 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.nova.upload.databinding.ActivityMainBinding
+import com.nova.upload.databinding.DialogDupBinding
 import com.nova.upload.databinding.SheetSendBinding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -329,6 +341,7 @@ class MainActivity : AppCompatActivity() {
         transferJob = lifecycleScope.launch {
             var ok = 0
             var bad = 0
+            var skipped = 0
             try {
                 uris.forEachIndexed { index, uri ->
                     if (userCancelled) return@forEachIndexed
@@ -338,6 +351,25 @@ class MainActivity : AppCompatActivity() {
                         val (file, mime, name) = withContext(Dispatchers.IO) { copyUriToCache(uri) }
                         try {
                             if (userCancelled) return@forEachIndexed
+                            showSend(name, "بررسی تکراری…", indeterminate = true, percent = 0)
+                            val duplicate = try {
+                                val md5 = withContext(Dispatchers.IO) { fileMd5(file) }
+                                withContext(Dispatchers.IO) { app.api.findDuplicate(token, md5) }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                if (userCancelled) return@forEachIndexed
+                                null
+                            }
+                            if (duplicate != null) {
+                                val accept = confirmDuplicate(file, mime, name, duplicate)
+                                if (userCancelled) return@forEachIndexed
+                                if (!accept) {
+                                    skipped++
+                                    pendingUris.remove(uri)
+                                    return@forEachIndexed
+                                }
+                            }
                             showSend(name, "ارسال ${fa(index + 1)} از ${fa(uris.size)}", indeterminate = false, percent = 0)
                             withContext(Dispatchers.IO) {
                                 app.api.uploadFile(token, catId, file, mime, name) { sent, total ->
@@ -379,7 +411,12 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     pendingUris.clear()
                     refreshHint()
-                    toast("تمام شد: ${fa(ok)} موفق" + if (bad > 0) "، ${fa(bad)} ناموفق" else "")
+                    val summary = buildString {
+                        append("تمام شد: ${fa(ok)} موفق")
+                        if (bad > 0) append("، ${fa(bad)} ناموفق")
+                        if (skipped > 0) append("، ${fa(skipped)} رد شد")
+                    }
+                    toast(summary)
                 }
             }
         }
@@ -444,6 +481,95 @@ class MainActivity : AppCompatActivity() {
         sheet = dialog
         sheetBinding = b
         dialog.show()
+    }
+
+    private suspend fun confirmDuplicate(file: File, mime: String, name: String, dup: DuplicateFile): Boolean {
+        return suspendCancellableCoroutine { cont ->
+            val dialog = Dialog(this)
+            val b = DialogDupBinding.inflate(layoutInflater)
+            dialog.setContentView(b.root)
+            dialog.setCancelable(false)
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            dialog.window?.decorView?.layoutDirection = View.LAYOUT_DIRECTION_RTL
+            listOf(b.imgNew, b.imgOld).forEach { image ->
+                image.clipToOutline = true
+                image.outlineProvider = ViewOutlineProvider.BACKGROUND
+            }
+            b.txtNewCat.text = adapter.selectedName().ifBlank { "—" }
+            b.txtNewName.text = name
+            b.txtOldCat.text = dup.categories
+            b.txtOldName.text = dup.title
+            fun finish(accept: Boolean) {
+                if (cont.isActive) cont.resume(accept) {}
+                dialog.dismiss()
+            }
+            b.btnAccept.setOnClickListener { finish(true) }
+            b.btnReject.setOnClickListener { finish(false) }
+            val images = lifecycleScope.launch {
+                val local = withContext(Dispatchers.IO) { decodePreview(file, mime) }
+                val remoteBytes = withContext(Dispatchers.IO) { app.api.fetchPreview(dup.thumbUrl) }
+                val remote = remoteBytes?.let { decodeBytes(it) }
+                if (!isActive) return@launch
+                if (local != null) b.imgNew.setImageBitmap(local) else b.txtNewEmpty.visibility = View.VISIBLE
+                if (remote != null) b.imgOld.setImageBitmap(remote) else b.txtOldEmpty.visibility = View.VISIBLE
+            }
+            cont.invokeOnCancellation {
+                images.cancel()
+                runOnUiThread { if (dialog.isShowing) dialog.dismiss() }
+            }
+            dialog.show()
+        }
+    }
+
+    private fun fileMd5(file: File): String {
+        val digest = MessageDigest.getInstance("MD5")
+        file.inputStream().use { input ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                digest.update(buf, 0, n)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private fun decodePreview(file: File, mime: String): Bitmap? {
+        if (mime.startsWith("video")) {
+            val retriever = MediaMetadataRetriever()
+            return try {
+                retriever.setDataSource(file.absolutePath)
+                retriever.getFrameAtTime(0)
+            } catch (_: Exception) {
+                null
+            } finally {
+                retriever.release()
+            }
+        }
+        return decodeFile(file.absolutePath)
+    }
+
+    private fun decodeFile(path: String): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply {
+            inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight)
+        })
+    }
+
+    private fun decodeBytes(bytes: ByteArray): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply {
+            inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight)
+        })
+    }
+
+    private fun sampleSize(width: Int, height: Int): Int {
+        var sample = 1
+        while (width / sample > 900 || height / sample > 900) sample *= 2
+        return sample.coerceAtLeast(1)
     }
 
     private fun closeSheet() {

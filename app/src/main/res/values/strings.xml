@@ -29,6 +29,13 @@
     <string name="login_password">ورود</string>
     <string name="share_ready">فایل‌های اشتراک‌گذاری‌شده آماده‌اند. دسته را انتخاب کنید.</string>
     <string name="no_cats">هنوز دسته‌بندی ندارید. اول در پنل وب یک دسته بسازید.</string>
+    <string name="dup_title">این فایل قبلاً در گالری هست</string>
+    <string name="dup_hint">هر دو را ببینید و برای همین فایل تصمیم بگیرید.</string>
+    <string name="dup_new">فایل جدید</string>
+    <string name="dup_old">فایل موجود</string>
+    <string name="dup_accept">تایید و ارسال</string>
+    <string name="dup_reject">عدم تایید</string>
+    <string name="dup_empty">بدون پیش‌نمایش</string>
     <string name="version_label">نسخه %1$s</string>
     <string name="menu_caption">ارسال به گالری نوا</string>
 </resources>
