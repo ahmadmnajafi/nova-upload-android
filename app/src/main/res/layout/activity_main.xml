@@ -305,6 +305,39 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
+        <TextView
+            android:id="@+id/txtAbout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/yekanbakh"
+            android:text="@string/about_owner"
+            android:textColor="@color/nova_muted"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/txtPhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/yekanbakh"
+            android:text="@string/about_phone"
+            android:textAlignment="viewStart"
+            android:textColor="@color/nova_primary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/txtSite"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="10dp"
+            android:fontFamily="@font/yekanbakh"
+            android:text="@string/about_site"
+            android:textAlignment="viewStart"
+            android:textColor="@color/nova_primary"
+            android:textDirection="ltr"
+            android:textSize="13sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

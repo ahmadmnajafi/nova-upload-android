@@ -40,6 +40,9 @@
     <string name="dup_accept">تایید و ارسال</string>
     <string name="dup_reject">عدم تایید</string>
     <string name="dup_empty">بدون پیش‌نمایش</string>
+    <string name="about_owner">این محصول مال نواپرداز است</string>
+    <string name="about_phone">۸۶۱۹۲۱۰۱</string>
+    <string name="about_site">novapardaz.com</string>
     <string name="version_label">نسخه %1$s</string>
     <string name="menu_caption">ارسال به گالری نوا</string>
 </resources>

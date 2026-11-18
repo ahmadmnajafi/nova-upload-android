@@ -101,6 +101,12 @@ class MainActivity : AppCompatActivity() {
         binding.swipe.setOnRefreshListener { loadCats(fromUser = true) }
         binding.btnMenu.setOnClickListener { binding.drawer.openDrawer(GravityCompat.START) }
         binding.btnVersionUpdate.setOnClickListener { pendingRelease?.let { downloadUpdate(it) } }
+        binding.txtPhone.setOnClickListener {
+            startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:02186192101")))
+        }
+        binding.txtSite.setOnClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://novapardaz.com")))
+        }
         binding.btnLogout.setOnClickListener { logout() }
         binding.btnNewCat.setOnClickListener { showNewCategory() }
         binding.btnPick.setOnClickListener {
