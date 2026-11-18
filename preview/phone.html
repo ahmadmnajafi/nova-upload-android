@@ -11,16 +11,15 @@
   body {
     margin: 0; min-height: 100vh; background: #e7e5e4;
     font-family: YekanBakh, Tahoma, sans-serif; color: #1c1c1e;
-    display: flex; gap: 36px; justify-content: center; align-items: flex-start;
-    padding: 36px 24px; flex-wrap: wrap;
+    display: flex; justify-content: center; align-items: flex-start; padding: 28px 16px 40px;
   }
   .phone {
-    width: 390px; height: 700px; background: #f2f2f7; border-radius: 36px;
+    width: 390px; height: 760px; background: #f2f2f7; border-radius: 36px;
     overflow: hidden; position: relative; box-shadow: 0 24px 60px rgba(0,0,0,.18);
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; user-select: none;
   }
-  .status { height: 54px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 22px 8px; font-size: 15px; font-weight: 700; }
-  .head { display: flex; align-items: center; gap: 12px; padding: 8px 20px 4px 12px; }
+  .status { height: 48px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 22px 6px; font-size: 15px; font-weight: 700; }
+  .head { display: flex; align-items: center; gap: 12px; padding: 4px 20px 4px 12px; }
   .menu {
     width: 44px; height: 44px; border: 0; border-radius: 22px; background: #e5e5ea;
     display: grid; gap: 5px; place-content: center; cursor: pointer; flex: 0 0 auto;
@@ -28,132 +27,242 @@
   .menu span { display: block; width: 16px; height: 1.6px; background: #1c1c1e; border-radius: 2px; }
   h1 { margin: 0; font-size: 28px; line-height: 1.15; font-weight: 700; }
   .user { margin-top: 2px; color: #8e8e93; font-size: 15px; }
-  .section { margin: 16px 20px 0; color: #8e8e93; font-size: 13px; }
+  .section { margin: 14px 20px 0; color: #8e8e93; font-size: 13px; }
   .hint { margin: 4px 20px 8px; color: #8e8e93; font-size: 15px; }
+  .pull {
+    height: 0; overflow: hidden; text-align: center; color: #8e8e93; font-size: 13px;
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px;
+  }
   .list { flex: 1; overflow: auto; padding: 4px 16px 12px; }
   .cat {
     background: #fff; border-radius: 14px; min-height: 52px; margin-bottom: 8px;
     padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
-    font-size: 17px;
+    font-size: 17px; cursor: pointer;
   }
   .cat.on { background: #e8f2ff; box-shadow: inset 0 0 0 2px #007aff; font-weight: 700; }
   .check { color: #007aff; font-size: 18px; }
-  .footer { background: #fff; border-top: 1px solid #c6c6c8; padding: 14px 16px 18px; }
-  .file { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .meta { margin-top: 2px; color: #8e8e93; font-size: 13px; }
-  .bar { height: 6px; background: #e5e5ea; border-radius: 99px; margin: 10px 0 14px; overflow: hidden; }
-  .bar i { display: block; height: 100%; width: 62%; background: #007aff; border-radius: 99px; }
-  .actions { display: flex; gap: 8px; }
-  button.btn { flex: 1; height: 50px; border: 0; border-radius: 14px; font-family: inherit; font-size: 17px; cursor: pointer; }
+  .footer { background: #fff; border-top: 1px solid #c6c6c8; padding: 16px; }
+  button.btn { width: 100%; height: 50px; border: 0; border-radius: 14px; font-family: inherit; font-size: 17px; cursor: pointer; }
   .secondary { background: #e5e5ea; color: #1c1c1e; }
   .primary { background: #007aff; color: #fff; }
-  .cancel { width: 100%; height: 40px; margin: 0 0 8px; background: transparent; color: #ff3b30; font-family: inherit; font-size: 17px; border: 0; cursor: pointer; }
+  .texty { background: transparent; color: #8e8e93; height: 40px; }
   .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); }
   .drawer {
     position: absolute; top: 0; right: 0; bottom: 0; width: 300px; background: #f2f2f7;
-    padding: 28px 20px 20px; box-shadow: -8px 0 30px rgba(0,0,0,.08);
+    padding: 36px 20px 18px; box-shadow: -8px 0 30px rgba(0,0,0,.08);
+    display: flex; flex-direction: column;
   }
-  .drawer h2 { margin: 0; font-size: 22px; }
-  .cap, .ver { color: #8e8e93; }
-  .cap { margin-top: 4px; font-size: 15px; }
-  .ver { margin-top: 2px; font-size: 13px; }
+  .kicker { color: #8e8e93; font-size: 12px; }
+  .kname { margin-top: 2px; font-size: 20px; font-weight: 700; }
+  .kcode { margin-top: 14px; font-size: 22px; font-weight: 700; letter-spacing: .5px; }
   .group { margin-top: 28px; background: #fff; border-radius: 14px; overflow: hidden; }
-  .row { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 16px; font-size: 17px; }
-  .row + .row { box-shadow: inset 0 1px 0 #c6c6c8; }
-  .row b { font-weight: 400; }
+  .row { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 16px; font-size: 17px; cursor: pointer; }
   .row.out { color: #ff3b30; }
-  .ico { width: 22px; text-align: center; color: #007aff; font-size: 16px; }
-  .caption { width: 100%; text-align: center; color: #57534e; font-size: 14px; margin-top: -20px; }
+  .ico { width: 22px; text-align: center; font-size: 16px; }
+  .verline {
+    margin-top: auto; display: flex; align-items: center; justify-content: flex-start; gap: 10px;
+    color: #8e8e93; font-size: 12px;
+  }
+  .verline button {
+    border: 0; background: transparent; color: #007aff; font-family: inherit; font-size: 12px;
+    padding: 0; cursor: pointer;
+  }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; background: #fff;
+    border-radius: 22px 22px 0 0; padding: 10px 20px 22px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,.12);
+  }
+  .handle { width: 36px; height: 5px; border-radius: 99px; background: #e5e5ea; margin: 0 auto 14px; }
+  .sheet h3 { margin: 0 0 4px; font-size: 20px; }
+  .sheet p { margin: 0 0 12px; color: #8e8e93; font-size: 14px; }
+  .file {
+    background: #f2f2f7; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; font-size: 15px;
+  }
+  .bar { height: 6px; background: #e5e5ea; border-radius: 99px; margin: 12px 0; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: #007aff; border-radius: 99px; }
+  .sheet .actions { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .toast {
+    position: absolute; top: 58px; left: 50%; transform: translateX(-50%);
+    background: rgba(28,28,30,.88); color: #fff; border-radius: 14px;
+    padding: 8px 14px; font-size: 13px; white-space: nowrap;
+  }
+  .drawer[hidden], .sheet[hidden], .scrim[hidden], .toast[hidden], .bar[hidden] { display: none !important; }
 </style>
 </head>
 <body>
-  <div>
-    <div class="phone" id="main">
-      <div class="status"><span>۱۹:۳۸</span><span>Nova</span></div>
-      <div class="head">
-        <button class="menu" id="open" aria-label="منو"><span></span><span></span><span></span></button>
-        <div>
-          <h1>Nova Uploader</h1>
-          <div class="user">گالری نمونه</div>
-        </div>
+  <div class="phone" id="phone">
+    <div class="status"><span>۲۰:۰۸</span><span>Nova</span></div>
+    <div class="head">
+      <button class="menu" id="open" aria-label="منو"><span></span><span></span><span></span></button>
+      <div>
+        <h1>Nova Uploader</h1>
+        <div class="user">گالری مرکزی</div>
       </div>
-      <div class="section">دسته‌بندی</div>
-      <div class="hint">۳ فایل آماده ارسال است</div>
-      <div class="list">
-        <div class="cat on"><span>ویترین</span><span class="check">✓</span></div>
-        <div class="cat" style="padding-right:32px"><span>محصولات</span></div>
-        <div class="cat"><span>کاتالوگ</span></div>
-        <div class="cat"><span>ویدیو</span></div>
-      </div>
-      <div class="footer">
+    </div>
+    <div class="section">دسته‌بندی</div>
+    <div class="hint" id="hint">یک دسته را انتخاب کنید، بعد فایل را بفرستید.</div>
+    <div class="pull" id="pull">برای بروزرسانی بکشید</div>
+    <div class="list" id="list">
+      <div class="cat on" data-name="ویترین"><span>ویترین</span><span class="check">✓</span></div>
+      <div class="cat" data-name="محصولات"><span>محصولات</span></div>
+      <div class="cat" data-name="کاتالوگ"><span>کاتالوگ</span></div>
+      <div class="cat" data-name="ویدیو"><span>ویدیو</span></div>
+    </div>
+    <div class="footer">
+      <button class="btn secondary" id="pick" type="button">انتخاب فایل</button>
+    </div>
+
+    <div class="scrim" id="sheetScrim" hidden></div>
+    <section class="sheet" id="sheet" hidden>
+      <div class="handle"></div>
+      <h3 id="sheetTitle">ارسال فایل</h3>
+      <p id="sheetSub">۳ فایل برای دسته ویترین</p>
+      <div id="sheetFiles">
         <div class="file">photo-vitrin.jpg</div>
-        <div class="meta">ارسال ۱ از ۳ · ۶۲٪</div>
-        <div class="bar"><i></i></div>
-        <button class="btn cancel" type="button">لغو</button>
-        <div class="actions">
-          <button class="btn secondary">انتخاب فایل</button>
-          <button class="btn primary">ارسال</button>
-        </div>
+        <div class="file">catalog.pdf</div>
+        <div class="file">clip.mp4</div>
       </div>
-      <div class="scrim" id="scrim" hidden></div>
-      <aside class="drawer" id="drawer" hidden>
-        <h2>Nova Uploader</h2>
-        <div class="cap">ارسال به گالری نوا</div>
-        <div class="ver">نسخه ۰.۲.۰</div>
-        <div class="group">
-          <div class="row"><span class="ico">↻</span><b>بروزرسانی دسته‌ها</b></div>
-          <div class="row"><span class="ico">↓</span><b>آپدیت برنامه</b></div>
-          <div class="row out"><span class="ico">↪</span><b>خروج</b></div>
-        </div>
-      </aside>
-    </div>
-    <p class="caption">صفحه اصلی و نوار ارسال</p>
-  </div>
-  <div>
-    <div class="phone">
-      <div class="status"><span>۱۹:۳۸</span><span>Nova</span></div>
-      <div class="head">
-        <button class="menu" aria-label="منو"><span></span><span></span><span></span></button>
-        <div>
-          <h1>Nova Uploader</h1>
-          <div class="user">گالری نمونه</div>
-        </div>
+      <div class="bar" id="sheetBar" hidden><i id="sheetFill"></i></div>
+      <div class="actions">
+        <button class="btn primary" id="send" type="button">ارسال</button>
+        <button class="btn texty" id="dismiss" type="button">انصراف</button>
       </div>
-      <div class="section">دسته‌بندی</div>
-      <div class="hint">یک دسته را انتخاب کنید، بعد فایل را بفرستید.</div>
-      <div class="list">
-        <div class="cat on"><span>ویترین</span><span class="check">✓</span></div>
-        <div class="cat"><span>محصولات</span></div>
+    </section>
+
+    <div class="scrim" id="scrim" hidden></div>
+    <aside class="drawer" id="drawer" hidden>
+      <div class="kicker">نام کیوسک</div>
+      <div class="kname">گالری مرکزی</div>
+      <div class="kicker" style="margin-top:16px">کد کیوسک</div>
+      <div class="kcode">۴۸۲۱۹۳</div>
+      <div class="group">
+        <div class="row out" id="logout"><span class="ico">↪</span><b>خروج</b></div>
       </div>
-      <div class="footer">
-        <div class="actions">
-          <button class="btn secondary">انتخاب فایل</button>
-          <button class="btn primary">ارسال</button>
-        </div>
+      <div class="verline">
+        <button type="button" id="upd">بروزرسانی</button>
+        <span id="ver">نسخه ۰.۲.۱</span>
       </div>
-      <div class="scrim"></div>
-      <aside class="drawer">
-        <h2>Nova Uploader</h2>
-        <div class="cap">ارسال به گالری نوا</div>
-        <div class="ver">نسخه ۰.۲.۰</div>
-        <div class="group">
-          <div class="row"><span class="ico">↻</span><b>بروزرسانی دسته‌ها</b></div>
-          <div class="row"><span class="ico">↓</span><b>آپدیت برنامه</b></div>
-          <div class="row out"><span class="ico">↪</span><b>خروج</b></div>
-        </div>
-      </aside>
-    </div>
-    <p class="caption">منوی همبرگری</p>
+    </aside>
+    <div class="toast" id="toast" hidden></div>
   </div>
   <script>
     const drawer = document.getElementById("drawer");
     const scrim = document.getElementById("scrim");
-    function toggle(open) {
+    const sheet = document.getElementById("sheet");
+    const sheetScrim = document.getElementById("sheetScrim");
+    const list = document.getElementById("list");
+    const pull = document.getElementById("pull");
+    const toast = document.getElementById("toast");
+    const send = document.getElementById("send");
+    const dismiss = document.getElementById("dismiss");
+    const sheetBar = document.getElementById("sheetBar");
+    const sheetFill = document.getElementById("sheetFill");
+    const sheetTitle = document.getElementById("sheetTitle");
+    const sheetSub = document.getElementById("sheetSub");
+    let sending = false;
+    let timer = null;
+
+    function say(text) {
+      toast.hidden = false;
+      toast.textContent = text;
+      clearTimeout(say._t);
+      say._t = setTimeout(() => { toast.hidden = true; }, 1600);
+    }
+    function toggleDrawer(open) {
       drawer.hidden = !open;
       scrim.hidden = !open;
     }
-    document.getElementById("open").onclick = () => toggle(true);
-    scrim.onclick = () => toggle(false);
+    function selectedCat() {
+      const on = list.querySelector(".cat.on");
+      return on ? on.dataset.name : "ویترین";
+    }
+    function openSheet() {
+      sending = false;
+      clearInterval(timer);
+      sheetTitle.textContent = "ارسال فایل";
+      sheetSub.textContent = "۳ فایل برای دسته " + selectedCat();
+      sheetBar.hidden = true;
+      sheetFill.style.width = "0";
+      send.hidden = false;
+      send.textContent = "ارسال";
+      dismiss.textContent = "انصراف";
+      sheet.hidden = false;
+      sheetScrim.hidden = false;
+    }
+    function closeSheet() {
+      sending = false;
+      clearInterval(timer);
+      sheet.hidden = true;
+      sheetScrim.hidden = true;
+    }
+    document.getElementById("open").onclick = () => toggleDrawer(true);
+    scrim.onclick = () => toggleDrawer(false);
+    document.getElementById("pick").onclick = openSheet;
+    sheetScrim.onclick = () => { if (!sending) closeSheet(); };
+    dismiss.onclick = () => {
+      if (sending) { closeSheet(); say("ارسال لغو شد"); return; }
+      closeSheet();
+    };
+    send.onclick = () => {
+      sending = true;
+      send.hidden = true;
+      dismiss.textContent = "لغو";
+      sheetTitle.textContent = "در حال ارسال";
+      sheetBar.hidden = false;
+      let n = 8;
+      sheetFill.style.width = n + "%";
+      sheetSub.textContent = "ارسال ۱ از ۳ · ۸٪";
+      timer = setInterval(() => {
+        n = Math.min(100, n + 7);
+        sheetFill.style.width = n + "%";
+        const fileNo = n < 40 ? 1 : n < 75 ? 2 : 3;
+        sheetSub.textContent = "ارسال " + fileNo + " از ۳ · " + n + "٪";
+        if (n >= 100) {
+          clearInterval(timer);
+          sending = false;
+          setTimeout(() => { closeSheet(); say("ارسال تمام شد"); }, 400);
+        }
+      }, 180);
+    };
+    list.querySelectorAll(".cat").forEach((cat) => {
+      cat.onclick = () => {
+        list.querySelectorAll(".cat").forEach((c) => {
+          c.classList.remove("on");
+          const mark = c.querySelector(".check");
+          if (mark) mark.remove();
+        });
+        cat.classList.add("on");
+        const span = document.createElement("span");
+        span.className = "check";
+        span.textContent = "✓";
+        cat.appendChild(span);
+      };
+    });
+    document.getElementById("upd").onclick = () => say("در حال دریافت نسخه جدید…");
+    document.getElementById("logout").onclick = () => say("خروج از حساب");
+
+    let startY = 0;
+    let pulling = false;
+    list.addEventListener("pointerdown", (e) => {
+      if (list.scrollTop > 0) return;
+      pulling = true;
+      startY = e.clientY;
+    });
+    list.addEventListener("pointermove", (e) => {
+      if (!pulling) return;
+      const dy = Math.max(0, Math.min(72, e.clientY - startY));
+      pull.style.height = dy + "px";
+      pull.textContent = dy > 52 ? "رها کنید" : "برای بروزرسانی بکشید";
+    });
+    function endPull() {
+      if (!pulling) return;
+      const refresh = pull.offsetHeight > 52;
+      pulling = false;
+      pull.style.height = "0";
+      if (refresh) say("دسته‌ها بروزرسانی شد");
+    }
+    list.addEventListener("pointerup", endPull);
+    list.addEventListener("pointercancel", endPull);
   </script>
 </body>
 </html>
