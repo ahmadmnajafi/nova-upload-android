@@ -83,7 +83,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnVersionUpdate.setOnClickListener { pendingRelease?.let { downloadUpdate(it) } }
         binding.btnLogout.setOnClickListener { logout() }
         binding.btnPick.setOnClickListener {
-            if (!busy && adapter.selectedId > 0) pickMedia.launch(arrayOf("image/*", "video/*"))
+            if (busy) return@setOnClickListener
+            if (adapter.selectedId <= 0) {
+                toast("اول یک دسته‌بندی انتخاب کنید")
+                return@setOnClickListener
+            }
+            pickMedia.launch(arrayOf("image/*", "video/*"))
         }
 
         ingestIntent(intent)
@@ -305,7 +310,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUploadEnabled() {
         if (!::binding.isInitialized || !::adapter.isInitialized) return
-        binding.btnPick.isEnabled = !busy && adapter.selectedId > 0
+        binding.btnPick.isEnabled = !busy
         refreshHint()
         val canSend = !busy && adapter.selectedId > 0 && pendingUris.isNotEmpty()
         sheetBinding?.btnSend?.isEnabled = canSend
@@ -454,8 +459,7 @@ class MainActivity : AppCompatActivity() {
         b.txtTitle.text = fileName
         b.txtSub.text = detail
         b.fileList.visibility = View.GONE
-        b.txtProgress.visibility = View.VISIBLE
-        b.txtProgress.text = detail
+        b.txtProgress.visibility = View.GONE
         b.progress.visibility = View.VISIBLE
         if (indeterminate) b.progress.isIndeterminate = true
         else {
