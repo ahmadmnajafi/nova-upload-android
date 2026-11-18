@@ -83,8 +83,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnVersionUpdate.setOnClickListener { pendingRelease?.let { downloadUpdate(it) } }
         binding.btnLogout.setOnClickListener { logout() }
         binding.btnPick.setOnClickListener {
-            if (pendingUris.isNotEmpty() && !busy) openSendSheet()
-            else pickMedia.launch(arrayOf("image/*", "video/*"))
+            if (!busy) pickMedia.launch(arrayOf("image/*", "video/*"))
         }
 
         ingestIntent(intent)
@@ -386,6 +385,7 @@ class MainActivity : AppCompatActivity() {
         }
         b.txtTitle.setText(R.string.start_upload)
         b.txtSub.text = "${fa(pendingUris.size)} فایل" + if (cat == null) " — اول دسته را انتخاب کنید" else ""
+        b.fileList.visibility = View.VISIBLE
         b.fileList.removeAllViews()
         pendingUris.take(6).forEach { uri ->
             val row = android.widget.TextView(this)
@@ -423,8 +423,13 @@ class MainActivity : AppCompatActivity() {
         }
         dialog.setOnDismissListener {
             if (!busy) {
+                pendingUris.clear()
                 sheet = null
                 sheetBinding = null
+                if (::binding.isInitialized) {
+                    refreshHint()
+                    updateUploadEnabled()
+                }
             }
         }
         sheet = dialog
