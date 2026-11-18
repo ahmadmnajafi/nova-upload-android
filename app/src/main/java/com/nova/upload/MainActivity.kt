@@ -1,6 +1,7 @@
 package com.nova.upload
 
 import android.app.Dialog
+import android.content.pm.PackageManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -19,6 +20,7 @@ import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
+import android.Manifest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -50,11 +52,15 @@ class MainActivity : AppCompatActivity() {
     private var busy = false
     private var userCancelled = false
     private var transferJob: Job? = null
+    private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
     private var pendingApk: File? = null
     private var pendingRelease: AppRelease? = null
     private var sharedHold = false
     private var sheet: BottomSheetDialog? = null
     private var sheetBinding: SheetSendBinding? = null
+    private val transferListener: (String, String, Boolean, Int) -> Unit = { title, detail, indeterminate, percent ->
+        runOnUiThread { renderSend(title, detail, indeterminate, percent) }
+    }
 
     private val pickMedia = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNullOrEmpty()) return@registerForActivityResult
@@ -125,6 +131,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        TransferLive.listener = transferListener
+        if (TransferLive.busy) {
+            busy = true
+            if (sheet?.isShowing != true) {
+                ensureSheet()
+                sheet?.setCancelable(false)
+                sheetBinding?.btnSend?.visibility = View.GONE
+                sheetBinding?.btnDismiss?.setText(R.string.cancel_send)
+                sheetBinding?.btnDismiss?.setTextColor(ContextCompat.getColor(this, R.color.nova_danger))
+                showSend(
+                    TransferLive.title,
+                    TransferLive.detail.ifBlank { "در حال ارسال…" },
+                    TransferLive.indeterminate,
+                    TransferLive.percent
+                )
+            }
+        }
         val file = pendingApk ?: return
         if (!file.exists()) {
             pendingApk = null
@@ -134,6 +157,11 @@ class MainActivity : AppCompatActivity() {
             pendingApk = null
             installApk(file)
         }
+    }
+
+    override fun onDestroy() {
+        if (TransferLive.listener === transferListener) TransferLive.listener = null
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -265,7 +293,7 @@ class MainActivity : AppCompatActivity() {
         val dest = File(cacheDir, "nova-uploader-update.apk")
         if (dest.exists()) dest.delete()
         showSend("Nova Uploader", "در حال دریافت آپدیت…", indeterminate = true, percent = 0)
-        transferJob = lifecycleScope.launch {
+        transferJob = TransferLive.scope.launch {
             try {
                 withContext(Dispatchers.IO) {
                     app.api.download(release.apkUrl, dest) { sent, total ->
@@ -280,20 +308,20 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
-                if (userCancelled) return@launch
+                if (TransferLive.cancelled) return@launch
                 showSend("Nova Uploader", "آماده نصب", indeterminate = false, percent = 100)
                 installApk(dest)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 dest.delete()
-                if (!userCancelled) {
+                if (!TransferLive.cancelled) {
                     closeSheet()
                     toast(e.message ?: "دانلود آپدیت ناموفق بود")
                 }
             } finally {
                 endTransfer()
-                if (userCancelled) {
+                if (TransferLive.cancelled) {
                     dest.delete()
                     closeSheet()
                     toast("دریافت لغو شد")
@@ -304,7 +332,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun beginTransfer() {
         userCancelled = false
+        TransferLive.cancelled = false
         busy = true
+        TransferLive.busy = true
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        TransferLive.hold(this)
         ensureSheet()
         sheet?.setCancelable(false)
         sheetBinding?.btnSend?.visibility = View.GONE
@@ -315,13 +351,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun endTransfer() {
         busy = false
+        TransferLive.busy = false
+        TransferLive.release(this)
         sheet?.setCancelable(true)
         updateUploadEnabled()
     }
 
     private fun cancelTransfer() {
-        if (!busy) return
+        if (!busy && !TransferLive.busy) return
         userCancelled = true
+        TransferLive.cancelled = true
         app.api.cancelOngoing()
         transferJob?.cancel()
     }
@@ -406,19 +445,19 @@ class MainActivity : AppCompatActivity() {
         if (pendingUris.isEmpty() || busy) return
         beginTransfer()
         val uris = pendingUris.toList()
-        transferJob = lifecycleScope.launch {
+        transferJob = TransferLive.scope.launch {
             var ok = 0
             var bad = 0
             var skipped = 0
             try {
                 uris.forEachIndexed { index, uri ->
-                    if (userCancelled) return@forEachIndexed
+                    if (TransferLive.cancelled) return@forEachIndexed
                     val label = "فایل ${fa(index + 1)} از ${fa(uris.size)}"
                     showSend(label, "آماده‌سازی…", indeterminate = true, percent = 0)
                     try {
                         val (file, mime, name) = withContext(Dispatchers.IO) { copyUriToCache(uri) }
                         try {
-                            if (userCancelled) return@forEachIndexed
+                            if (TransferLive.cancelled) return@forEachIndexed
                             showSend(name, "بررسی تکراری…", indeterminate = true, percent = 0)
                             val duplicate = try {
                                 val md5 = withContext(Dispatchers.IO) { fileMd5(file) }
@@ -426,13 +465,13 @@ class MainActivity : AppCompatActivity() {
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (_: Exception) {
-                                if (userCancelled) return@forEachIndexed
+                                if (TransferLive.cancelled) return@forEachIndexed
                                 null
                             }
                             var replaceId = 0
                             if (duplicate != null) {
                                 val accept = confirmDuplicate(file, mime, name, duplicate)
-                                if (userCancelled) return@forEachIndexed
+                                if (TransferLive.cancelled) return@forEachIndexed
                                 if (!accept) {
                                     skipped++
                                     pendingUris.remove(uri)
@@ -454,7 +493,7 @@ class MainActivity : AppCompatActivity() {
                                     val filePercent = (fraction * 100).toInt().coerceIn(0, 100)
                                     val moved = if (total > 0) "${formatSize(sent)} از ${formatSize(total)}" else sizeLabel
                                     runOnUiThread {
-                                        if (!userCancelled) {
+                                        if (!TransferLive.cancelled) {
                                             showSend(
                                                 name,
                                                 "ارسال ${fa(index + 1)} از ${fa(uris.size)} · $moved · ${fa(filePercent)}٪",
@@ -473,13 +512,13 @@ class MainActivity : AppCompatActivity() {
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        if (userCancelled) return@forEachIndexed
+                        if (TransferLive.cancelled) return@forEachIndexed
                         bad++
                         toast(e.message ?: "خطا در یک فایل")
                     }
                 }
             } finally {
-                val cancelled = userCancelled
+                val cancelled = TransferLive.cancelled
                 endTransfer()
                 refreshHint()
                 closeSheet()
@@ -564,6 +603,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun confirmDuplicate(file: File, mime: String, name: String, dup: DuplicateFile): Boolean {
+        if (isDestroyed) return false
         return suspendCancellableCoroutine { cont ->
             val dialog = Dialog(this)
             val b = DialogDupBinding.inflate(layoutInflater)
@@ -588,6 +628,9 @@ class MainActivity : AppCompatActivity() {
             }
             b.btnAccept.setOnClickListener { finish(true) }
             b.btnReject.setOnClickListener { finish(false) }
+            dialog.setOnDismissListener {
+                if (cont.isActive) cont.resume(false) {}
+            }
             val images = lifecycleScope.launch {
                 val local = withContext(Dispatchers.IO) { decodePreview(file, mime) }
                 val remoteBytes = withContext(Dispatchers.IO) { app.api.fetchPreview(dup.thumbUrl) }
@@ -700,6 +743,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSend(fileName: String, detail: String, indeterminate: Boolean, percent: Int) {
+        TransferLive.note(applicationContext, fileName, detail, indeterminate, percent)
+    }
+
+    private fun renderSend(fileName: String, detail: String, indeterminate: Boolean, percent: Int) {
+        if (isDestroyed || !TransferLive.busy) return
         ensureSheet()
         val b = sheetBinding ?: return
         b.txtTitle.text = fileName

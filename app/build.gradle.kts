@@ -14,8 +14,8 @@ android {
         applicationId = "com.nova.upload"
         minSdk = 24
         targetSdk = 34
-        versionCode = 14
-        versionName = "0.4.0"
+        versionCode = 15
+        versionName = "0.4.1"
         buildConfigField("String", "API_BASE", "\"https://g.novatouch.ir/wp-admin/admin-ajax.php\"")
     }
 
