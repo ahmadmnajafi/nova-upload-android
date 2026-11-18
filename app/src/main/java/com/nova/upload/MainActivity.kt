@@ -17,6 +17,7 @@ import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
+import android.view.WindowManager
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.nova.upload.databinding.ActivityMainBinding
+import com.nova.upload.databinding.DialogCatBinding
 import com.nova.upload.databinding.DialogDupBinding
 import com.nova.upload.databinding.SheetSendBinding
 import kotlinx.coroutines.CancellationException
@@ -101,6 +103,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnMenu.setOnClickListener { binding.drawer.openDrawer(GravityCompat.START) }
         binding.btnVersionUpdate.setOnClickListener { pendingRelease?.let { downloadUpdate(it) } }
         binding.btnLogout.setOnClickListener { logout() }
+        binding.btnNewCat.setOnClickListener { showNewCategory() }
         binding.btnPick.setOnClickListener {
             if (busy) return@setOnClickListener
             if (adapter.selectedId <= 0) {
@@ -179,7 +182,7 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun loadCats(fromUser: Boolean = false) {
+    private fun loadCats(fromUser: Boolean = false, selectId: Int = 0) {
         val token = app.session.appToken ?: return goLogin(arrayListOf())
         if (fromUser) binding.swipe.isRefreshing = true
         else binding.txtStatus.text = "در حال بارگذاری دسته‌ها…"
@@ -194,12 +197,19 @@ class MainActivity : AppCompatActivity() {
                 binding.txtKioskCode.text = faText(home.kioskCode.ifBlank { "—" })
                 showStorage(home.usedBytes, home.limitBytes)
                 adapter.submit(home.categories)
-                if (!sharedHold) {
+                if (selectId > 0 && home.categories.any { it.id == selectId }) {
+                    adapter.selectedId = selectId
+                    app.session.lastCategoryId = selectId
+                } else if (!sharedHold) {
                     val last = app.session.lastCategoryId
                     if (last > 0 && home.categories.any { it.id == last }) adapter.selectedId = last
                 }
                 binding.txtStatus.text = if (home.categories.isEmpty()) getString(R.string.no_cats) else ""
                 updateUploadEnabled()
+                if (selectId > 0 && sharedHold && pendingUris.isNotEmpty() && !busy) {
+                    sharedHold = false
+                    openSendSheet()
+                }
                 if (fromUser) toast("دسته‌ها بروزرسانی شد")
             } catch (e: Exception) {
                 if (e.message?.contains("توکن") == true || e.message?.contains("نشست") == true) {
@@ -340,9 +350,44 @@ class MainActivity : AppCompatActivity() {
     private fun updateUploadEnabled() {
         if (!::binding.isInitialized || !::adapter.isInitialized) return
         binding.btnPick.isEnabled = !busy
+        binding.btnNewCat.isEnabled = !busy
         refreshHint()
         val canSend = !busy && adapter.selectedId > 0 && pendingUris.isNotEmpty()
         sheetBinding?.btnSend?.isEnabled = canSend
+    }
+
+    private fun showNewCategory() {
+        if (busy) return
+        val token = app.session.appToken ?: return
+        val dialog = Dialog(this)
+        val form = DialogCatBinding.inflate(layoutInflater)
+        dialog.setContentView(form.root)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        dialog.window?.decorView?.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        form.btnCancel.setOnClickListener { dialog.dismiss() }
+        form.btnCreate.setOnClickListener {
+            val name = form.inputName.text?.toString()?.trim().orEmpty()
+            if (name.isEmpty()) {
+                toast("نام دسته‌بندی را بنویسید")
+                return@setOnClickListener
+            }
+            form.btnCreate.isEnabled = false
+            lifecycleScope.launch {
+                try {
+                    val id = withContext(Dispatchers.IO) { app.api.createCategory(token, name) }
+                    if (dialog.isShowing) dialog.dismiss()
+                    toast("دسته‌بندی ساخته شد")
+                    loadCats(selectId = id)
+                } catch (e: Exception) {
+                    form.btnCreate.isEnabled = true
+                    toast(e.message ?: "ساخت دسته‌بندی نشد")
+                }
+            }
+        }
+        dialog.show()
+        form.inputName.requestFocus()
     }
 
     private fun startUpload() {

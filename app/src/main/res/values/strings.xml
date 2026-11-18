@@ -10,6 +10,10 @@
     <string name="pick_files_next">دسته انتخاب شد. حالا فایل را انتخاب کنید.</string>
     <string name="files_ready">%1$s فایل آماده ارسال است</string>
     <string name="categories">دسته‌بندی</string>
+    <string name="new_category">دسته جدید</string>
+    <string name="new_category_title">ساخت دسته‌بندی</string>
+    <string name="new_category_hint">نام دسته‌بندی</string>
+    <string name="new_category_ok">ساختن</string>
     <string name="pick_files">انتخاب فایل</string>
     <string name="start_upload">ارسال</string>
     <string name="logout">خروج</string>

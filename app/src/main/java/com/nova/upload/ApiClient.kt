@@ -172,6 +172,20 @@ class ApiClient(
         )
     }
 
+    fun createCategory(token: String, name: String): Int {
+        val data = post(
+            form(
+                "action" to "nova_upload_app_cat_add",
+                "app_token" to token,
+                "name" to name
+            ),
+            token
+        )
+        val id = data.optInt("id")
+        if (id <= 0) throw IllegalStateException("ساخت دسته‌بندی نشد")
+        return id
+    }
+
     fun findDuplicate(token: String, md5: String): DuplicateFile? {
         val data = post(
             form(
