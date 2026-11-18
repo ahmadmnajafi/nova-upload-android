@@ -6,7 +6,8 @@
     <string name="code_hint">کد ۴ رقمی</string>
     <string name="send_code">دریافت کد</string>
     <string name="verify_code">ورود</string>
-    <string name="pick_category">یک دسته را انتخاب کنید، بعد فایل را بفرستید.</string>
+    <string name="pick_category">اول یک دسته‌بندی انتخاب کنید.</string>
+    <string name="pick_files_next">دسته انتخاب شد. حالا فایل را انتخاب کنید.</string>
     <string name="files_ready">%1$s فایل آماده ارسال است</string>
     <string name="categories">دسته‌بندی</string>
     <string name="pick_files">انتخاب فایل</string>

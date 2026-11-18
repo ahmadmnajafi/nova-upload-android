@@ -83,7 +83,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnVersionUpdate.setOnClickListener { pendingRelease?.let { downloadUpdate(it) } }
         binding.btnLogout.setOnClickListener { logout() }
         binding.btnPick.setOnClickListener {
-            if (!busy) pickMedia.launch(arrayOf("image/*", "video/*"))
+            if (!busy && adapter.selectedId > 0) pickMedia.launch(arrayOf("image/*", "video/*"))
         }
 
         ingestIntent(intent)
@@ -294,15 +294,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshHint() {
+        if (!::binding.isInitialized) return
+        val hasCat = ::adapter.isInitialized && adapter.selectedId > 0
         binding.txtHint.text = when {
             pendingUris.isNotEmpty() -> getString(R.string.files_ready, fa(pendingUris.size))
+            hasCat -> getString(R.string.pick_files_next)
             else -> getString(R.string.pick_category)
         }
     }
 
     private fun updateUploadEnabled() {
         if (!::binding.isInitialized || !::adapter.isInitialized) return
-        binding.btnPick.isEnabled = !busy
+        binding.btnPick.isEnabled = !busy && adapter.selectedId > 0
+        refreshHint()
         val canSend = !busy && adapter.selectedId > 0 && pendingUris.isNotEmpty()
         sheetBinding?.btnSend?.isEnabled = canSend
     }
