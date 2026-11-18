@@ -23,6 +23,15 @@ data class CategoryItem(
     val depth: Int = 0
 )
 
+data class AccountHome(
+    val displayName: String,
+    val kioskName: String,
+    val kioskCode: String,
+    val usedBytes: Long,
+    val limitBytes: Long,
+    val categories: List<CategoryItem>
+)
+
 data class AppRelease(
     val versionCode: Int,
     val versionName: String,
@@ -123,9 +132,8 @@ class ApiClient(
         return token to name
     }
 
-    fun fetchCategories(token: String): Pair<String, List<CategoryItem>> {
+    fun fetchCategories(token: String): AccountHome {
         val data = post(form("action" to "nova_upload_app_cats", "app_token" to token), token)
-        val name = data.optString("display_name")
         val arr = data.optJSONArray("cats") ?: org.json.JSONArray()
         val raw = mutableListOf<CategoryItem>()
         for (i in 0 until arr.length()) {
@@ -137,7 +145,14 @@ class ApiClient(
                 order = o.optInt("order")
             )
         }
-        return name to nest(raw)
+        return AccountHome(
+            displayName = data.optString("display_name"),
+            kioskName = data.optString("kiosk_name"),
+            kioskCode = data.optString("kiosk_code"),
+            usedBytes = data.optLong("used_bytes"),
+            limitBytes = data.optLong("limit_bytes"),
+            categories = nest(raw)
+        )
     }
 
     fun fetchRelease(): AppRelease {

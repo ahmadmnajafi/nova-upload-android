@@ -11,12 +11,14 @@ import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.GravityCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.nova.upload.databinding.ActivityMainBinding
+import com.nova.upload.databinding.SheetSendBinding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -34,6 +36,9 @@ class MainActivity : AppCompatActivity() {
     private var userCancelled = false
     private var transferJob: Job? = null
     private var pendingApk: File? = null
+    private var pendingRelease: AppRelease? = null
+    private var sheet: BottomSheetDialog? = null
+    private var sheetBinding: SheetSendBinding? = null
 
     private val pickMedia = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNullOrEmpty()) return@registerForActivityResult
@@ -46,9 +51,9 @@ class MainActivity : AppCompatActivity() {
         }
         pendingUris.clear()
         pendingUris.addAll(uris)
-        if (!busy) binding.uploadPanel.visibility = View.GONE
         refreshHint()
         updateUploadEnabled()
+        if (!busy) openSendSheet()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,19 +76,20 @@ class MainActivity : AppCompatActivity() {
         binding.listCats.adapter = adapter
 
         binding.txtUser.text = app.session.displayName.orEmpty()
-        binding.txtVersion.text = getString(R.string.version_label, BuildConfig.VERSION_NAME)
+        binding.txtVersion.text = getString(R.string.version_label, faText(BuildConfig.VERSION_NAME))
+        binding.swipe.setColorSchemeColors(ContextCompat.getColor(this, R.color.nova_primary))
+        binding.swipe.setOnRefreshListener { loadCats(fromUser = true) }
         binding.btnMenu.setOnClickListener { binding.drawer.openDrawer(GravityCompat.START) }
-        binding.btnRefresh.setOnClickListener { loadCats(fromUser = true) }
-        binding.btnUpdate.setOnClickListener { checkUpdate() }
+        binding.btnVersionUpdate.setOnClickListener { pendingRelease?.let { downloadUpdate(it) } }
         binding.btnLogout.setOnClickListener { logout() }
         binding.btnPick.setOnClickListener {
-            pickMedia.launch(arrayOf("image/*", "video/*"))
+            if (pendingUris.isNotEmpty() && !busy) openSendSheet()
+            else pickMedia.launch(arrayOf("image/*", "video/*"))
         }
-        binding.btnUpload.setOnClickListener { startUpload() }
-        binding.btnCancel.setOnClickListener { cancelTransfer() }
 
         ingestIntent(intent)
         loadCats()
+        lookForUpdate()
     }
 
     override fun onResume() {
@@ -119,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         }
         refreshHint()
         updateUploadEnabled()
+        if (pendingUris.isNotEmpty() && !busy) openSendSheet()
     }
 
     private fun collectShareUris(intent: Intent?): ArrayList<Uri> {
@@ -144,23 +151,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadCats(fromUser: Boolean = false) {
         val token = app.session.appToken ?: return goLogin(arrayListOf())
-        if (::binding.isInitialized && binding.drawer.isDrawerOpen(GravityCompat.START)) {
-            binding.drawer.closeDrawer(GravityCompat.START)
-        }
-        binding.txtStatus.text = if (fromUser) "در حال بروزرسانی…" else "در حال بارگذاری دسته‌ها…"
+        if (fromUser) binding.swipe.isRefreshing = true
+        else binding.txtStatus.text = "در حال بارگذاری دسته‌ها…"
         lifecycleScope.launch {
             try {
-                val (name, cats) = withContext(Dispatchers.IO) { app.api.fetchCategories(token) }
-                if (name.isNotBlank()) {
-                    app.session.displayName = name
-                    binding.txtUser.text = name
+                val home = withContext(Dispatchers.IO) { app.api.fetchCategories(token) }
+                if (home.displayName.isNotBlank()) {
+                    app.session.displayName = home.displayName
+                    binding.txtUser.text = home.displayName
                 }
-                adapter.submit(cats)
+                binding.txtKioskName.text = home.kioskName.ifBlank { "—" }
+                binding.txtKioskCode.text = faText(home.kioskCode.ifBlank { "—" })
+                showStorage(home.usedBytes, home.limitBytes)
+                adapter.submit(home.categories)
                 val last = app.session.lastCategoryId
-                if (last > 0 && cats.any { it.id == last }) adapter.selectedId = last
-                binding.txtStatus.text = if (cats.isEmpty()) getString(R.string.no_cats) else ""
+                if (last > 0 && home.categories.any { it.id == last }) adapter.selectedId = last
+                binding.txtStatus.text = if (home.categories.isEmpty()) getString(R.string.no_cats) else ""
                 updateUploadEnabled()
-                if (fromUser) toast("بروزرسانی شد")
+                if (fromUser) toast("دسته‌ها بروزرسانی شد")
             } catch (e: Exception) {
                 if (e.message?.contains("توکن") == true || e.message?.contains("نشست") == true) {
                     app.session.clear()
@@ -169,60 +177,39 @@ class MainActivity : AppCompatActivity() {
                     binding.txtStatus.text = e.message ?: "خطا"
                     toast(e.message ?: "خطا")
                 }
+            } finally {
+                binding.swipe.isRefreshing = false
             }
         }
     }
 
-    private fun checkUpdate() {
-        if (busy) {
-            toast("اول ارسال تمام شود")
-            return
-        }
-        if (binding.drawer.isDrawerOpen(GravityCompat.START)) {
-            binding.drawer.closeDrawer(GravityCompat.START)
-        }
-        binding.txtStatus.text = "در حال بررسی آپدیت…"
+    private fun lookForUpdate() {
         lifecycleScope.launch {
             try {
                 val release = withContext(Dispatchers.IO) { app.api.fetchRelease() }
-                binding.txtStatus.text = ""
-                when {
-                    release.versionCode > BuildConfig.VERSION_CODE && release.apkUrl.startsWith("https://") -> {
-                        showUpdateDialog(release)
-                    }
-                    release.versionCode > BuildConfig.VERSION_CODE -> {
-                        toast("نسخه جدید هست، ولی لینک دانلود هنوز روی سرور تنظیم نشده")
-                    }
-                    else -> toast("همین نسخه نصب است")
-                }
-            } catch (e: Exception) {
-                binding.txtStatus.text = ""
-                toast(friendly(e))
+                val ready = release.versionCode > BuildConfig.VERSION_CODE && release.apkUrl.startsWith("https://")
+                pendingRelease = if (ready) release else null
+                binding.btnVersionUpdate.visibility = if (ready) View.VISIBLE else View.GONE
+            } catch (_: Exception) {
+                binding.btnVersionUpdate.visibility = View.GONE
             }
         }
     }
 
-    private fun showUpdateDialog(release: AppRelease) {
-        val notes = release.notes.trim()
-        val message = buildString {
-            append("نسخه ")
-            append(release.versionName.ifBlank { fa(release.versionCode) })
-            append(" آماده است.")
-            if (notes.isNotEmpty()) {
-                append("\n")
-                append(notes)
-            }
+    private fun showStorage(used: Long, limit: Long) {
+        binding.txtStorage.text = if (limit <= 0) "—" else "${formatSize(used)} از ${formatSize(limit)}"
+        val percent = if (limit <= 0) 0 else ((used * 100) / limit).toInt().coerceIn(0, 100)
+        binding.usageBar.setProgressCompat(percent, false)
+    }
+
+    private fun formatSize(bytes: Long): String {
+        val gb = bytes / (1024.0 * 1024.0 * 1024.0)
+        val text = if (gb >= 1) {
+            String.format(java.util.Locale.US, "%.1f گیگابایت", gb)
+        } else {
+            String.format(java.util.Locale.US, "%.0f مگابایت", bytes / (1024.0 * 1024.0))
         }
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.app_update))
-            .setMessage(message)
-            .setPositiveButton("دریافت و نصب") { _, _ -> downloadUpdate(release) }
-            .setNegativeButton("بعداً", null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.window?.decorView?.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        }
-        dialog.show()
+        return faText(text)
     }
 
     private fun downloadUpdate(release: AppRelease) {
@@ -253,14 +240,14 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 dest.delete()
                 if (!userCancelled) {
-                    binding.uploadPanel.visibility = View.GONE
+                    closeSheet()
                     toast(e.message ?: "دانلود آپدیت ناموفق بود")
                 }
             } finally {
                 endTransfer()
                 if (userCancelled) {
                     dest.delete()
-                    binding.uploadPanel.visibility = View.GONE
+                    closeSheet()
                     toast("دریافت لغو شد")
                 }
             }
@@ -270,13 +257,17 @@ class MainActivity : AppCompatActivity() {
     private fun beginTransfer() {
         userCancelled = false
         busy = true
-        binding.btnCancel.visibility = View.VISIBLE
+        ensureSheet()
+        sheet?.setCancelable(false)
+        sheetBinding?.btnSend?.visibility = View.GONE
+        sheetBinding?.btnDismiss?.setText(R.string.cancel_send)
+        sheetBinding?.btnDismiss?.setTextColor(ContextCompat.getColor(this, R.color.nova_danger))
         updateUploadEnabled()
     }
 
     private fun endTransfer() {
         busy = false
-        binding.btnCancel.visibility = View.GONE
+        sheet?.setCancelable(true)
         updateUploadEnabled()
     }
 
@@ -313,13 +304,18 @@ class MainActivity : AppCompatActivity() {
     private fun updateUploadEnabled() {
         if (!::binding.isInitialized || !::adapter.isInitialized) return
         binding.btnPick.isEnabled = !busy
-        binding.btnUpload.isEnabled = !busy && adapter.selectedId > 0 && pendingUris.isNotEmpty()
+        val canSend = !busy && adapter.selectedId > 0 && pendingUris.isNotEmpty()
+        sheetBinding?.btnSend?.isEnabled = canSend
     }
 
     private fun startUpload() {
         val token = app.session.appToken ?: return
         val catId = adapter.selectedId
-        if (catId <= 0 || pendingUris.isEmpty() || busy) return
+        if (catId <= 0) {
+            toast("اول یک دسته را انتخاب کنید")
+            return
+        }
+        if (pendingUris.isEmpty() || busy) return
         beginTransfer()
         val uris = pendingUris.toList()
         transferJob = lifecycleScope.launch {
@@ -369,34 +365,93 @@ class MainActivity : AppCompatActivity() {
                 val cancelled = userCancelled
                 endTransfer()
                 refreshHint()
+                closeSheet()
                 if (cancelled) {
-                    showSend(
-                        "ارسال لغو شد",
-                        if (ok > 0) "${fa(ok)} فایل فرستاده شد" else "چیزی فرستاده نشد",
-                        indeterminate = false,
-                        percent = 0
-                    )
-                    toast("ارسال لغو شد")
+                    toast(if (ok > 0) "ارسال لغو شد. ${fa(ok)} فایل فرستاده شد" else "ارسال لغو شد")
                 } else {
                     pendingUris.clear()
                     refreshHint()
-                    val summary = "تمام شد: ${fa(ok)} موفق" + if (bad > 0) "، ${fa(bad)} ناموفق" else ""
-                    showSend("ارسال تمام شد", summary, indeterminate = false, percent = 100)
-                    toast(summary)
+                    toast("تمام شد: ${fa(ok)} موفق" + if (bad > 0) "، ${fa(bad)} ناموفق" else "")
                 }
             }
         }
     }
 
+    private fun openSendSheet() {
+        ensureSheet()
+        val b = sheetBinding ?: return
+        val cat = adapter.selectedId.takeIf { it > 0 }?.let { id ->
+            // name is shown from the hint path; category title comes from the list text if possible
+            id
+        }
+        b.txtTitle.setText(R.string.start_upload)
+        b.txtSub.text = "${fa(pendingUris.size)} فایل" + if (cat == null) " — اول دسته را انتخاب کنید" else ""
+        b.fileList.removeAllViews()
+        pendingUris.take(6).forEach { uri ->
+            val row = android.widget.TextView(this)
+            row.text = queryDisplayName(uri) ?: "فایل"
+            row.setTextColor(ContextCompat.getColor(this, R.color.nova_text))
+            row.textSize = 15f
+            row.setPadding(0, 12, 0, 12)
+            b.fileList.addView(row)
+        }
+        if (pendingUris.size > 6) {
+            val more = android.widget.TextView(this)
+            more.text = "و ${fa(pendingUris.size - 6)} فایل دیگر"
+            more.setTextColor(ContextCompat.getColor(this, R.color.nova_muted))
+            b.fileList.addView(more)
+        }
+        b.txtProgress.visibility = View.GONE
+        b.progress.visibility = View.GONE
+        b.btnSend.visibility = View.VISIBLE
+        b.btnDismiss.setText(R.string.dismiss)
+        b.btnDismiss.setTextColor(ContextCompat.getColor(this, R.color.nova_muted))
+        updateUploadEnabled()
+    }
+
+    private fun ensureSheet() {
+        if (sheet?.isShowing == true && sheetBinding != null) return
+        val dialog = BottomSheetDialog(this)
+        val b = SheetSendBinding.inflate(layoutInflater)
+        dialog.setContentView(b.root)
+        b.btnSend.setOnClickListener { startUpload() }
+        b.btnDismiss.setOnClickListener {
+            if (busy) cancelTransfer() else dialog.dismiss()
+        }
+        dialog.setOnShowListener {
+            dialog.window?.decorView?.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        dialog.setOnDismissListener {
+            if (!busy) {
+                sheet = null
+                sheetBinding = null
+            }
+        }
+        sheet = dialog
+        sheetBinding = b
+        dialog.show()
+    }
+
+    private fun closeSheet() {
+        sheet?.setCancelable(true)
+        sheet?.dismiss()
+        sheet = null
+        sheetBinding = null
+    }
+
     private fun showSend(fileName: String, detail: String, indeterminate: Boolean, percent: Int) {
-        binding.uploadPanel.visibility = View.VISIBLE
-        binding.txtFile.text = fileName
-        binding.txtProgress.text = detail
-        if (indeterminate) {
-            binding.progress.isIndeterminate = true
-        } else {
-            binding.progress.isIndeterminate = false
-            binding.progress.setProgressCompat(percent, true)
+        ensureSheet()
+        val b = sheetBinding ?: return
+        b.txtTitle.text = fileName
+        b.txtSub.text = detail
+        b.fileList.visibility = View.GONE
+        b.txtProgress.visibility = View.VISIBLE
+        b.txtProgress.text = detail
+        b.progress.visibility = View.VISIBLE
+        if (indeterminate) b.progress.isIndeterminate = true
+        else {
+            b.progress.isIndeterminate = false
+            b.progress.setProgressCompat(percent, true)
         }
     }
 
@@ -450,7 +505,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun fa(n: Int): String = n.toString().map { ch ->
+    private fun fa(n: Int): String = faText(n.toString())
+
+    private fun faText(value: String): String = value.map { ch ->
         if (ch in '0'..'9') "۰۱۲۳۴۵۶۷۸۹"[ch - '0'] else ch
     }.joinToString("")
 

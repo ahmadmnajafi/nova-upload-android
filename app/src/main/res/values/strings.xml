@@ -16,6 +16,11 @@
     <string name="refresh">بروزرسانی دسته‌ها</string>
     <string name="app_update">آپدیت برنامه</string>
     <string name="cancel_send">لغو</string>
+    <string name="dismiss">انصراف</string>
+    <string name="kiosk_name">نام کیوسک</string>
+    <string name="kiosk_code">کد کیوسک</string>
+    <string name="storage_used">حجم مصرفی</string>
+    <string name="version_update">بروزرسانی</string>
     <string name="mode_phone">شماره موبایل</string>
     <string name="mode_user">نام کاربری</string>
     <string name="username_hint">نام کاربری</string>
