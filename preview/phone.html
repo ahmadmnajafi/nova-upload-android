@@ -55,7 +55,14 @@
   .kicker { color: #8e8e93; font-size: 12px; }
   .kname { margin-top: 2px; font-size: 20px; font-weight: 700; }
   .kcode { margin-top: 14px; font-size: 22px; font-weight: 700; letter-spacing: .5px; }
-  .group { margin-top: 28px; background: #fff; border-radius: 14px; overflow: hidden; }
+  .usage {
+    margin-top: 22px; background: #fff; border-radius: 14px; padding: 14px 16px 16px;
+  }
+  .usage .kicker { margin: 0; }
+  .usage .nums { margin-top: 4px; font-size: 15px; }
+  .usage .track { height: 6px; background: #e5e5ea; border-radius: 99px; margin-top: 10px; overflow: hidden; }
+  .usage .track i { display: block; height: 100%; width: 48%; background: #007aff; border-radius: 99px; }
+  .group { margin-top: 12px; background: #fff; border-radius: 14px; overflow: hidden; }
   .row { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 16px; font-size: 17px; cursor: pointer; }
   .row.out { color: #ff3b30; }
   .ico { width: 22px; text-align: center; font-size: 16px; }
@@ -135,6 +142,11 @@
       <div class="kname">گالری مرکزی</div>
       <div class="kicker" style="margin-top:16px">کد کیوسک</div>
       <div class="kcode">۴۸۲۱۹۳</div>
+      <div class="usage">
+        <div class="kicker">حجم مصرفی</div>
+        <div class="nums">۲٫۴ از ۵ گیگابایت</div>
+        <div class="track"><i></i></div>
+      </div>
       <div class="group">
         <div class="row out" id="logout"><span class="ico">↪</span><b>خروج</b></div>
       </div>
