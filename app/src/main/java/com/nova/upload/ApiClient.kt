@@ -1,5 +1,6 @@
 package com.nova.upload
 
+import okhttp3.Call
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -11,6 +12,7 @@ import okio.BufferedSink
 import okio.source
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 data class CategoryItem(
@@ -37,6 +39,13 @@ class ApiClient(
         .writeTimeout(120, TimeUnit.SECONDS)
         .build()
 
+    @Volatile
+    private var activeCall: Call? = null
+
+    fun cancelOngoing() {
+        activeCall?.cancel()
+    }
+
     private fun form(vararg pairs: Pair<String, String>): RequestBody {
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
         pairs.forEach { (k, v) -> body.addFormDataPart(k, v) }
@@ -51,24 +60,48 @@ class ApiClient(
                 if (!token.isNullOrBlank()) header("X-Nova-Upload-Token", token)
             }
             .build()
-        client.newCall(req).execute().use { res ->
-            val text = res.body?.string().orEmpty()
-            val json = try {
-                JSONObject(text)
-            } catch (_: Exception) {
-                throw IllegalStateException("پاسخ نامعتبر سرور")
-            }
-            if (!json.optBoolean("success", false)) {
-                val data = json.opt("data")
-                val msg = when (data) {
-                    is JSONObject -> data.optString("message")
-                    is String -> data
-                    else -> ""
+        val call = client.newCall(req)
+        activeCall = call
+        try {
+            call.execute().use { res ->
+                val text = res.body?.string().orEmpty()
+                val json = try {
+                    JSONObject(text)
+                } catch (_: Exception) {
+                    throw IllegalStateException("پاسخ نامعتبر سرور")
                 }
-                throw IllegalStateException(msg.ifBlank { "خطا در ارتباط با سرور" })
+                if (!json.optBoolean("success", false)) {
+                    val data = json.opt("data")
+                    val msg = when (data) {
+                        is JSONObject -> data.optString("message")
+                        is String -> data
+                        else -> ""
+                    }
+                    throw IllegalStateException(msg.ifBlank { "خطا در ارتباط با سرور" })
+                }
+                return json.optJSONObject("data") ?: JSONObject()
             }
-            return json.optJSONObject("data") ?: JSONObject()
+        } catch (e: IOException) {
+            if (call.isCanceled()) throw IllegalStateException("ارسال لغو شد")
+            throw IllegalStateException(e.message ?: "ارتباط قطع شد")
+        } finally {
+            if (activeCall === call) activeCall = null
         }
+    }
+
+    fun loginWithPassword(username: String, password: String, device: String): Pair<String, String> {
+        val data = post(
+            form(
+                "action" to "nova_upload_app_password",
+                "username" to username,
+                "password" to password,
+                "device" to device
+            )
+        )
+        val token = data.optString("app_token")
+        val name = data.optString("display_name")
+        if (token.isBlank()) throw IllegalStateException("توکن دریافت نشد")
+        return token to name
     }
 
     fun sendOtp(phone: String) {
@@ -147,28 +180,37 @@ class ApiClient(
     fun download(url: String, dest: File, onProgress: (sent: Long, total: Long) -> Unit) {
         if (!url.startsWith("https://")) throw IllegalStateException("آدرس دانلود معتبر نیست")
         val req = Request.Builder().url(url).get().build()
-        client.newCall(req).execute().use { res ->
-            if (!res.isSuccessful) throw IllegalStateException("دانلود آپدیت ناموفق بود")
-            val body = res.body ?: throw IllegalStateException("فایل آپدیت خالی است")
-            val total = body.contentLength().coerceAtLeast(0L)
-            var sent = 0L
-            var last = 0L
-            dest.outputStream().use { out ->
-                body.byteStream().use { input ->
-                    val buf = ByteArray(32 * 1024)
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n < 0) break
-                        out.write(buf, 0, n)
-                        sent += n
-                        val now = System.currentTimeMillis()
-                        if (total <= 0 || sent == total || now - last >= 80L) {
-                            last = now
-                            onProgress(sent, total)
+        val call = client.newCall(req)
+        activeCall = call
+        try {
+            call.execute().use { res ->
+                if (!res.isSuccessful) throw IllegalStateException("دانلود آپدیت ناموفق بود")
+                val body = res.body ?: throw IllegalStateException("فایل آپدیت خالی است")
+                val total = body.contentLength().coerceAtLeast(0L)
+                var sent = 0L
+                var last = 0L
+                dest.outputStream().use { out ->
+                    body.byteStream().use { input ->
+                        val buf = ByteArray(32 * 1024)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                            sent += n
+                            val now = System.currentTimeMillis()
+                            if (total <= 0 || sent == total || now - last >= 80L) {
+                                last = now
+                                onProgress(sent, total)
+                            }
                         }
                     }
                 }
             }
+        } catch (e: IOException) {
+            if (call.isCanceled()) throw IllegalStateException("ارسال لغو شد")
+            throw IllegalStateException(e.message ?: "ارتباط قطع شد")
+        } finally {
+            if (activeCall === call) activeCall = null
         }
     }
 

@@ -13,8 +13,14 @@
     <string name="start_upload">ارسال</string>
     <string name="logout">خروج</string>
     <string name="menu">منو</string>
-    <string name="refresh">بروزرسانی</string>
-    <string name="app_update">آپدیت</string>
+    <string name="refresh">بروزرسانی دسته‌ها</string>
+    <string name="app_update">آپدیت برنامه</string>
+    <string name="cancel_send">لغو</string>
+    <string name="mode_phone">شماره موبایل</string>
+    <string name="mode_user">نام کاربری</string>
+    <string name="username_hint">نام کاربری</string>
+    <string name="password_hint">رمز عبور</string>
+    <string name="login_password">ورود</string>
     <string name="share_ready">فایل‌های اشتراک‌گذاری‌شده آماده‌اند. دسته را انتخاب کنید.</string>
     <string name="no_cats">هنوز دسته‌بندی ندارید. اول در پنل وب یک دسته بسازید.</string>
     <string name="version_label">نسخه %1$s</string>

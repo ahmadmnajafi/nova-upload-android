@@ -1,12 +1,14 @@
 package com.nova.upload
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.nova.upload.databinding.ActivityLoginBinding
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +26,51 @@ class LoginActivity : AppCompatActivity() {
 
         binding.btnSendCode.setOnClickListener { sendCode() }
         binding.btnVerify.setOnClickListener { verify() }
+        binding.btnPassword.setOnClickListener { loginWithPassword() }
+        binding.btnModePhone.setOnClickListener { showPhone(true) }
+        binding.btnModeUser.setOnClickListener { showPhone(false) }
+        showPhone(true)
+    }
+
+    private fun showPhone(phone: Boolean) {
+        binding.phonePanel.visibility = if (phone) View.VISIBLE else View.GONE
+        binding.passPanel.visibility = if (phone) View.GONE else View.VISIBLE
+        val on = ContextCompat.getColor(this, R.color.nova_primary)
+        val off = ContextCompat.getColor(this, R.color.nova_fill)
+        val onText = ContextCompat.getColor(this, android.R.color.white)
+        val offText = ContextCompat.getColor(this, R.color.nova_text)
+        binding.btnModePhone.backgroundTintList = ColorStateList.valueOf(if (phone) on else off)
+        binding.btnModeUser.backgroundTintList = ColorStateList.valueOf(if (phone) off else on)
+        binding.btnModePhone.setTextColor(if (phone) onText else offText)
+        binding.btnModeUser.setTextColor(if (phone) offText else onText)
+        binding.txtStatus.text = ""
+    }
+
+    private fun loginWithPassword() {
+        val user = binding.inputUser.text?.toString()?.trim().orEmpty()
+        val pass = binding.inputPassword.text?.toString().orEmpty()
+        if (user.isEmpty() || pass.isEmpty()) {
+            toast("نام کاربری و رمز را وارد کنید")
+            return
+        }
+        binding.btnPassword.isEnabled = false
+        binding.txtStatus.text = "در حال ورود…"
+        val device = "${Build.MANUFACTURER} ${Build.MODEL}".take(80)
+        lifecycleScope.launch {
+            try {
+                val (token, name) = withContext(Dispatchers.IO) {
+                    app.api.loginWithPassword(user, pass, device)
+                }
+                app.session.appToken = token
+                app.session.displayName = name
+                goMain()
+            } catch (e: Exception) {
+                binding.txtStatus.text = e.message ?: "خطا"
+                toast(e.message ?: "خطا")
+            } finally {
+                binding.btnPassword.isEnabled = true
+            }
+        }
     }
 
     private fun phone(): String {

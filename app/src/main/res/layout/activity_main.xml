@@ -159,6 +159,19 @@
                     app:trackCornerRadius="100dp"
                     app:trackStopIndicatorSize="0dp"
                     app:trackThickness="6dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCancel"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/yekanbakh"
+                    android:text="@string/cancel_send"
+                    android:textAllCaps="false"
+                    android:textColor="@color/nova_danger"
+                    android:textSize="17sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <LinearLayout

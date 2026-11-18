@@ -17,7 +17,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.nova.upload.databinding.ActivityMainBinding
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -29,6 +31,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: CategoryAdapter
     private val pendingUris = mutableListOf<Uri>()
     private var busy = false
+    private var userCancelled = false
+    private var transferJob: Job? = null
     private var pendingApk: File? = null
 
     private val pickMedia = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -76,6 +80,7 @@ class MainActivity : AppCompatActivity() {
             pickMedia.launch(arrayOf("image/*", "video/*"))
         }
         binding.btnUpload.setOnClickListener { startUpload() }
+        binding.btnCancel.setOnClickListener { cancelTransfer() }
 
         ingestIntent(intent)
         loadCats()
@@ -221,12 +226,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun downloadUpdate(release: AppRelease) {
-        busy = true
-        updateUploadEnabled()
+        beginTransfer()
         val dest = File(cacheDir, "nova-uploader-update.apk")
         if (dest.exists()) dest.delete()
         showSend("Nova Uploader", "در حال دریافت آپدیت…", indeterminate = true, percent = 0)
-        lifecycleScope.launch {
+        transferJob = lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
                     app.api.download(release.apkUrl, dest) { sent, total ->
@@ -241,17 +245,46 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+                if (userCancelled) return@launch
                 showSend("Nova Uploader", "آماده نصب", indeterminate = false, percent = 100)
                 installApk(dest)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 dest.delete()
-                binding.uploadPanel.visibility = View.GONE
-                toast(e.message ?: "دانلود آپدیت ناموفق بود")
+                if (!userCancelled) {
+                    binding.uploadPanel.visibility = View.GONE
+                    toast(e.message ?: "دانلود آپدیت ناموفق بود")
+                }
             } finally {
-                busy = false
-                updateUploadEnabled()
+                endTransfer()
+                if (userCancelled) {
+                    dest.delete()
+                    binding.uploadPanel.visibility = View.GONE
+                    toast("دریافت لغو شد")
+                }
             }
         }
+    }
+
+    private fun beginTransfer() {
+        userCancelled = false
+        busy = true
+        binding.btnCancel.visibility = View.VISIBLE
+        updateUploadEnabled()
+    }
+
+    private fun endTransfer() {
+        busy = false
+        binding.btnCancel.visibility = View.GONE
+        updateUploadEnabled()
+    }
+
+    private fun cancelTransfer() {
+        if (!busy) return
+        userCancelled = true
+        app.api.cancelOngoing()
+        transferJob?.cancel()
     }
 
     private fun installApk(file: File) {
@@ -287,50 +320,71 @@ class MainActivity : AppCompatActivity() {
         val token = app.session.appToken ?: return
         val catId = adapter.selectedId
         if (catId <= 0 || pendingUris.isEmpty() || busy) return
-        busy = true
-        updateUploadEnabled()
+        beginTransfer()
         val uris = pendingUris.toList()
-        lifecycleScope.launch {
+        transferJob = lifecycleScope.launch {
             var ok = 0
             var bad = 0
-            uris.forEachIndexed { index, uri ->
-                val label = "فایل ${fa(index + 1)} از ${fa(uris.size)}"
-                showSend(label, "آماده‌سازی…", indeterminate = true, percent = 0)
-                try {
-                    val (file, mime, name) = withContext(Dispatchers.IO) { copyUriToCache(uri) }
+            try {
+                uris.forEachIndexed { index, uri ->
+                    if (userCancelled) return@forEachIndexed
+                    val label = "فایل ${fa(index + 1)} از ${fa(uris.size)}"
+                    showSend(label, "آماده‌سازی…", indeterminate = true, percent = 0)
                     try {
-                        showSend(name, "ارسال ${fa(index + 1)} از ${fa(uris.size)}", indeterminate = false, percent = 0)
-                        withContext(Dispatchers.IO) {
-                            app.api.uploadFile(token, catId, file, mime, name) { sent, total ->
-                                val fraction = if (total > 0) sent.toFloat() / total else 0f
-                                val overall = (((index + fraction) / uris.size) * 100).toInt().coerceIn(0, 100)
-                                val filePercent = (fraction * 100).toInt().coerceIn(0, 100)
-                                runOnUiThread {
-                                    showSend(
-                                        name,
-                                        "ارسال ${fa(index + 1)} از ${fa(uris.size)} · ${fa(filePercent)}٪",
-                                        indeterminate = false,
-                                        percent = overall
-                                    )
+                        val (file, mime, name) = withContext(Dispatchers.IO) { copyUriToCache(uri) }
+                        try {
+                            if (userCancelled) return@forEachIndexed
+                            showSend(name, "ارسال ${fa(index + 1)} از ${fa(uris.size)}", indeterminate = false, percent = 0)
+                            withContext(Dispatchers.IO) {
+                                app.api.uploadFile(token, catId, file, mime, name) { sent, total ->
+                                    val fraction = if (total > 0) sent.toFloat() / total else 0f
+                                    val overall = (((index + fraction) / uris.size) * 100).toInt().coerceIn(0, 100)
+                                    val filePercent = (fraction * 100).toInt().coerceIn(0, 100)
+                                    runOnUiThread {
+                                        if (!userCancelled) {
+                                            showSend(
+                                                name,
+                                                "ارسال ${fa(index + 1)} از ${fa(uris.size)} · ${fa(filePercent)}٪",
+                                                indeterminate = false,
+                                                percent = overall
+                                            )
+                                        }
+                                    }
                                 }
                             }
+                            ok++
+                            pendingUris.remove(uri)
+                        } finally {
+                            file.delete()
                         }
-                        ok++
-                    } finally {
-                        file.delete()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        if (userCancelled) return@forEachIndexed
+                        bad++
+                        toast(e.message ?: "خطا در یک فایل")
                     }
-                } catch (e: Exception) {
-                    bad++
-                    toast(e.message ?: "خطا در یک فایل")
+                }
+            } finally {
+                val cancelled = userCancelled
+                endTransfer()
+                refreshHint()
+                if (cancelled) {
+                    showSend(
+                        "ارسال لغو شد",
+                        if (ok > 0) "${fa(ok)} فایل فرستاده شد" else "چیزی فرستاده نشد",
+                        indeterminate = false,
+                        percent = 0
+                    )
+                    toast("ارسال لغو شد")
+                } else {
+                    pendingUris.clear()
+                    refreshHint()
+                    val summary = "تمام شد: ${fa(ok)} موفق" + if (bad > 0) "، ${fa(bad)} ناموفق" else ""
+                    showSend("ارسال تمام شد", summary, indeterminate = false, percent = 100)
+                    toast(summary)
                 }
             }
-            busy = false
-            pendingUris.clear()
-            refreshHint()
-            updateUploadEnabled()
-            val summary = "تمام شد: ${fa(ok)} موفق" + if (bad > 0) "، ${fa(bad)} ناموفق" else ""
-            showSend("ارسال تمام شد", summary, indeterminate = false, percent = 100)
-            toast(summary)
         }
     }
 

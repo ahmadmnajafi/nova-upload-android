@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/nova_bg"
@@ -49,59 +50,145 @@
             android:textColor="@color/nova_muted"
             android:textSize="17sp" />
 
-        <com.google.android.material.textfield.TextInputLayout
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/bg_segment"
+            android:orientation="horizontal"
+            android:padding="3dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModePhone"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/mode_phone"
+                android:textSize="15sp"
+                app:cornerRadius="10dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModeUser"
+                style="@style/Widget.Nova.Button.Secondary"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/mode_user"
+                android:textSize="15sp"
+                app:cornerRadius="10dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/phonePanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/phone_hint">
+            android:orientation="vertical">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/inputPhone"
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/yekanbakh"
-                android:gravity="right"
-                android:inputType="phone"
-                android:maxLength="11"
-                android:textColor="@color/nova_text"
-                android:textDirection="ltr"
-                android:textSize="17sp" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:hint="@string/phone_hint">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSendCode"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="16dp"
-            android:text="@string/send_code" />
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/inputPhone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/yekanbakh"
+                    android:gravity="right"
+                    android:inputType="phone"
+                    android:maxLength="11"
+                    android:textColor="@color/nova_text"
+                    android:textDirection="ltr"
+                    android:textSize="17sp" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/boxCode"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSendCode"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="16dp"
+                android:text="@string/send_code" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/boxCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/code_hint"
+                android:visibility="gone">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/inputCode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/yekanbakh"
+                    android:gravity="right"
+                    android:inputType="number"
+                    android:maxLength="4"
+                    android:textColor="@color/nova_text"
+                    android:textDirection="ltr"
+                    android:textSize="17sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnVerify"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/verify_code"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/passPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="@string/code_hint"
+            android:orientation="vertical"
             android:visibility="gone">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/inputCode"
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/yekanbakh"
-                android:gravity="right"
-                android:inputType="number"
-                android:maxLength="4"
-                android:textColor="@color/nova_text"
-                android:textDirection="ltr"
-                android:textSize="17sp" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:hint="@string/username_hint">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnVerify"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="12dp"
-            android:text="@string/verify_code"
-            android:visibility="gone" />
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/inputUser"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/yekanbakh"
+                    android:inputType="text"
+                    android:textColor="@color/nova_text"
+                    android:textSize="17sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/password_hint"
+                app:endIconMode="password_toggle">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/inputPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/yekanbakh"
+                    android:inputType="textPassword"
+                    android:textColor="@color/nova_text"
+                    android:textSize="17sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPassword"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="16dp"
+                android:text="@string/login_password" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/txtStatus"
