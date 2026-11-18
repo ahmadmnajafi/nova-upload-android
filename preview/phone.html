@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nova Uploader</title>
+<style>
+  @font-face { font-family: YekanBakh; src: url("../app/src/main/res/font/yekanbakh_regular.ttf") format("truetype"); font-weight: 400; }
+  @font-face { font-family: YekanBakh; src: url("../app/src/main/res/font/yekanbakh_bold.ttf") format("truetype"); font-weight: 700; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: #e7e5e4;
+    font-family: YekanBakh, Tahoma, sans-serif; color: #1c1c1e;
+    display: flex; gap: 36px; justify-content: center; align-items: flex-start;
+    padding: 36px 24px; flex-wrap: wrap;
+  }
+  .phone {
+    width: 390px; height: 700px; background: #f2f2f7; border-radius: 36px;
+    overflow: hidden; position: relative; box-shadow: 0 24px 60px rgba(0,0,0,.18);
+    display: flex; flex-direction: column;
+  }
+  .status { height: 54px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 22px 8px; font-size: 15px; font-weight: 700; }
+  .head { display: flex; align-items: center; gap: 12px; padding: 8px 20px 4px 12px; }
+  .menu {
+    width: 44px; height: 44px; border: 0; border-radius: 22px; background: #e5e5ea;
+    display: grid; gap: 5px; place-content: center; cursor: pointer; flex: 0 0 auto;
+  }
+  .menu span { display: block; width: 16px; height: 1.6px; background: #1c1c1e; border-radius: 2px; }
+  h1 { margin: 0; font-size: 28px; line-height: 1.15; font-weight: 700; }
+  .user { margin-top: 2px; color: #8e8e93; font-size: 15px; }
+  .section { margin: 16px 20px 0; color: #8e8e93; font-size: 13px; }
+  .hint { margin: 4px 20px 8px; color: #8e8e93; font-size: 15px; }
+  .list { flex: 1; overflow: auto; padding: 4px 16px 12px; }
+  .cat {
+    background: #fff; border-radius: 14px; min-height: 52px; margin-bottom: 8px;
+    padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+    font-size: 17px;
+  }
+  .cat.on { background: #e8f2ff; box-shadow: inset 0 0 0 2px #007aff; font-weight: 700; }
+  .check { color: #007aff; font-size: 18px; }
+  .footer { background: #fff; border-top: 1px solid #c6c6c8; padding: 14px 16px 18px; }
+  .file { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { margin-top: 2px; color: #8e8e93; font-size: 13px; }
+  .bar { height: 6px; background: #e5e5ea; border-radius: 99px; margin: 10px 0 14px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 62%; background: #007aff; border-radius: 99px; }
+  .actions { display: flex; gap: 8px; }
+  button.btn { flex: 1; height: 50px; border: 0; border-radius: 14px; font-family: inherit; font-size: 17px; cursor: pointer; }
+  .secondary { background: #e5e5ea; color: #1c1c1e; }
+  .primary { background: #007aff; color: #fff; }
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); }
+  .drawer {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 300px; background: #f2f2f7;
+    padding: 28px 20px 20px; box-shadow: -8px 0 30px rgba(0,0,0,.08);
+  }
+  .drawer h2 { margin: 0; font-size: 22px; }
+  .cap, .ver { color: #8e8e93; }
+  .cap { margin-top: 4px; font-size: 15px; }
+  .ver { margin-top: 2px; font-size: 13px; }
+  .group { margin-top: 28px; background: #fff; border-radius: 14px; overflow: hidden; }
+  .row { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 16px; font-size: 17px; }
+  .row + .row { box-shadow: inset 0 1px 0 #c6c6c8; }
+  .row b { font-weight: 400; }
+  .row.out { color: #ff3b30; }
+  .ico { width: 22px; text-align: center; color: #007aff; font-size: 16px; }
+  .caption { width: 100%; text-align: center; color: #57534e; font-size: 14px; margin-top: -20px; }
+</style>
+</head>
+<body>
+  <div>
+    <div class="phone" id="main">
+      <div class="status"><span>۱۹:۳۸</span><span>Nova</span></div>
+      <div class="head">
+        <button class="menu" id="open" aria-label="منو"><span></span><span></span><span></span></button>
+        <div>
+          <h1>Nova Uploader</h1>
+          <div class="user">گالری نمونه</div>
+        </div>
+      </div>
+      <div class="section">دسته‌بندی</div>
+      <div class="hint">۳ فایل آماده ارسال است</div>
+      <div class="list">
+        <div class="cat on"><span>ویترین</span><span class="check">✓</span></div>
+        <div class="cat" style="padding-right:32px"><span>محصولات</span></div>
+        <div class="cat"><span>کاتالوگ</span></div>
+        <div class="cat"><span>ویدیو</span></div>
+      </div>
+      <div class="footer">
+        <div class="file">photo-vitrin.jpg</div>
+        <div class="meta">ارسال ۱ از ۳ · ۶۲٪</div>
+        <div class="bar"><i></i></div>
+        <div class="actions">
+          <button class="btn secondary">انتخاب فایل</button>
+          <button class="btn primary">ارسال</button>
+        </div>
+      </div>
+      <div class="scrim" id="scrim" hidden></div>
+      <aside class="drawer" id="drawer" hidden>
+        <h2>Nova Uploader</h2>
+        <div class="cap">ارسال به گالری نوا</div>
+        <div class="ver">نسخه ۰.۲.۰</div>
+        <div class="group">
+          <div class="row"><span class="ico">↻</span><b>بروزرسانی</b></div>
+          <div class="row"><span class="ico">↓</span><b>آپدیت</b></div>
+          <div class="row out"><span class="ico">↪</span><b>خروج</b></div>
+        </div>
+      </aside>
+    </div>
+    <p class="caption">صفحه اصلی و نوار ارسال</p>
+  </div>
+  <div>
+    <div class="phone">
+      <div class="status"><span>۱۹:۳۸</span><span>Nova</span></div>
+      <div class="head">
+        <button class="menu" aria-label="منو"><span></span><span></span><span></span></button>
+        <div>
+          <h1>Nova Uploader</h1>
+          <div class="user">گالری نمونه</div>
+        </div>
+      </div>
+      <div class="section">دسته‌بندی</div>
+      <div class="hint">یک دسته را انتخاب کنید، بعد فایل را بفرستید.</div>
+      <div class="list">
+        <div class="cat on"><span>ویترین</span><span class="check">✓</span></div>
+        <div class="cat"><span>محصولات</span></div>
+      </div>
+      <div class="footer">
+        <div class="actions">
+          <button class="btn secondary">انتخاب فایل</button>
+          <button class="btn primary">ارسال</button>
+        </div>
+      </div>
+      <div class="scrim"></div>
+      <aside class="drawer">
+        <h2>Nova Uploader</h2>
+        <div class="cap">ارسال به گالری نوا</div>
+        <div class="ver">نسخه ۰.۲.۰</div>
+        <div class="group">
+          <div class="row"><span class="ico">↻</span><b>بروزرسانی</b></div>
+          <div class="row"><span class="ico">↓</span><b>آپدیت</b></div>
+          <div class="row out"><span class="ico">↪</span><b>خروج</b></div>
+        </div>
+      </aside>
+    </div>
+    <p class="caption">منوی همبرگری</p>
+  </div>
+  <script>
+    const drawer = document.getElementById("drawer");
+    const scrim = document.getElementById("scrim");
+    function toggle(open) {
+      drawer.hidden = !open;
+      scrim.hidden = !open;
+    }
+    document.getElementById("open").onclick = () => toggle(true);
+    scrim.onclick = () => toggle(false);
+  </script>
+</body>
+</html>
