@@ -40,6 +40,7 @@ data class AppRelease(
 )
 
 data class DuplicateFile(
+    val id: Int,
     val title: String,
     val categories: String,
     val thumbUrl: String,
@@ -197,6 +198,7 @@ class ApiClient(
         )
         if (!data.optBoolean("duplicate")) return null
         return DuplicateFile(
+            id = data.optInt("id"),
             title = data.optString("title").ifBlank { "فایل موجود" },
             categories = data.optString("categories").ifBlank { "بدون دسته‌بندی" },
             thumbUrl = data.optString("thumb_url"),
@@ -245,6 +247,7 @@ class ApiClient(
         file: File,
         mime: String,
         displayName: String,
+        replaceId: Int = 0,
         onProgress: (sent: Long, total: Long) -> Unit
     ) {
         val fileBody = ProgressRequestBody(file, mime.toMediaType(), onProgress)
@@ -253,6 +256,7 @@ class ApiClient(
             .addFormDataPart("app_token", token)
             .addFormDataPart("category_id", categoryId.toString())
             .addFormDataPart("folder_id", "0")
+            .apply { if (replaceId > 0) addFormDataPart("replace_id", replaceId.toString()) }
             .addFormDataPart("file", displayName, fileBody)
             .build()
         post(body, token)

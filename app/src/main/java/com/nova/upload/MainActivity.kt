@@ -429,6 +429,7 @@ class MainActivity : AppCompatActivity() {
                                 if (userCancelled) return@forEachIndexed
                                 null
                             }
+                            var replaceId = 0
                             if (duplicate != null) {
                                 val accept = confirmDuplicate(file, mime, name, duplicate)
                                 if (userCancelled) return@forEachIndexed
@@ -437,6 +438,7 @@ class MainActivity : AppCompatActivity() {
                                     pendingUris.remove(uri)
                                     return@forEachIndexed
                                 }
+                                replaceId = duplicate.id
                             }
                             val sizeLabel = formatSize(file.length())
                             showSend(
@@ -446,7 +448,7 @@ class MainActivity : AppCompatActivity() {
                                 percent = 0
                             )
                             withContext(Dispatchers.IO) {
-                                app.api.uploadFile(token, catId, file, mime, name) { sent, total ->
+                                app.api.uploadFile(token, catId, file, mime, name, replaceId) { sent, total ->
                                     val fraction = if (total > 0) sent.toFloat() / total else 0f
                                     val overall = (((index + fraction) / uris.size) * 100).toInt().coerceIn(0, 100)
                                     val filePercent = (fraction * 100).toInt().coerceIn(0, 100)
