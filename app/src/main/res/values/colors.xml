@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="nova_bg">#F1F5F9</color>
+    <color name="nova_bg">#F2F2F7</color>
     <color name="nova_surface">#FFFFFF</color>
-    <color name="nova_text">#0F172A</color>
-    <color name="nova_muted">#64748B</color>
-    <color name="nova_primary">#2563EB</color>
-    <color name="nova_primary_soft">#EFF6FF</color>
-    <color name="nova_border">#E2E8F0</color>
-    <color name="ic_launcher_bg">#2563EB</color>
+    <color name="nova_text">#1C1C1E</color>
+    <color name="nova_muted">#8E8E93</color>
+    <color name="nova_primary">#007AFF</color>
+    <color name="nova_primary_soft">#E8F2FF</color>
+    <color name="nova_fill">#E5E5EA</color>
+    <color name="nova_separator">#C6C6C8</color>
+    <color name="nova_track">#E5E5EA</color>
+    <color name="nova_danger">#FF3B30</color>
+    <color name="nova_success">#34C759</color>
+    <color name="ic_launcher_bg">#007AFF</color>
 </resources>

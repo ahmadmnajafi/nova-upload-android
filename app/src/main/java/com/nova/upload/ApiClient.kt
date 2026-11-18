@@ -1,11 +1,14 @@
 package com.nova.upload
 
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.BufferedSink
+import okio.source
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -18,6 +21,13 @@ data class CategoryItem(
     val depth: Int = 0
 )
 
+data class AppRelease(
+    val versionCode: Int,
+    val versionName: String,
+    val apkUrl: String,
+    val notes: String
+)
+
 class ApiClient(
     private val baseUrl: String = BuildConfig.API_BASE
 ) {
@@ -27,13 +37,13 @@ class ApiClient(
         .writeTimeout(120, TimeUnit.SECONDS)
         .build()
 
-    private fun form(vararg pairs: Pair<String, String>): okhttp3.RequestBody {
+    private fun form(vararg pairs: Pair<String, String>): RequestBody {
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
         pairs.forEach { (k, v) -> body.addFormDataPart(k, v) }
         return body.build()
     }
 
-    private fun post(body: okhttp3.RequestBody, token: String? = null): JSONObject {
+    private fun post(body: RequestBody, token: String? = null): JSONObject {
         val req = Request.Builder()
             .url(baseUrl)
             .post(body)
@@ -49,8 +59,12 @@ class ApiClient(
                 throw IllegalStateException("پاسخ نامعتبر سرور")
             }
             if (!json.optBoolean("success", false)) {
-                val msg = json.optJSONObject("data")?.optString("message")
-                    ?: json.optString("data", "خطا در ارتباط با سرور")
+                val data = json.opt("data")
+                val msg = when (data) {
+                    is JSONObject -> data.optString("message")
+                    is String -> data
+                    else -> ""
+                }
                 throw IllegalStateException(msg.ifBlank { "خطا در ارتباط با سرور" })
             }
             return json.optJSONObject("data") ?: JSONObject()
@@ -93,6 +107,16 @@ class ApiClient(
         return name to nest(raw)
     }
 
+    fun fetchRelease(): AppRelease {
+        val data = post(form("action" to "nova_upload_app_version"))
+        return AppRelease(
+            versionCode = data.optInt("version_code"),
+            versionName = data.optString("version_name"),
+            apkUrl = data.optString("apk_url"),
+            notes = data.optString("notes")
+        )
+    }
+
     fun logout(token: String) {
         try {
             post(form("action" to "nova_upload_app_logout", "app_token" to token), token)
@@ -101,19 +125,51 @@ class ApiClient(
         }
     }
 
-    fun uploadFile(token: String, categoryId: Int, file: File, mime: String, displayName: String) {
+    fun uploadFile(
+        token: String,
+        categoryId: Int,
+        file: File,
+        mime: String,
+        displayName: String,
+        onProgress: (sent: Long, total: Long) -> Unit
+    ) {
+        val fileBody = ProgressRequestBody(file, mime.toMediaType(), onProgress)
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("action", "nova_upload_dual")
             .addFormDataPart("app_token", token)
             .addFormDataPart("category_id", categoryId.toString())
             .addFormDataPart("folder_id", "0")
-            .addFormDataPart(
-                "file",
-                displayName,
-                file.asRequestBody(mime.toMediaType())
-            )
+            .addFormDataPart("file", displayName, fileBody)
             .build()
         post(body, token)
+    }
+
+    fun download(url: String, dest: File, onProgress: (sent: Long, total: Long) -> Unit) {
+        if (!url.startsWith("https://")) throw IllegalStateException("آدرس دانلود معتبر نیست")
+        val req = Request.Builder().url(url).get().build()
+        client.newCall(req).execute().use { res ->
+            if (!res.isSuccessful) throw IllegalStateException("دانلود آپدیت ناموفق بود")
+            val body = res.body ?: throw IllegalStateException("فایل آپدیت خالی است")
+            val total = body.contentLength().coerceAtLeast(0L)
+            var sent = 0L
+            var last = 0L
+            dest.outputStream().use { out ->
+                body.byteStream().use { input ->
+                    val buf = ByteArray(32 * 1024)
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        out.write(buf, 0, n)
+                        sent += n
+                        val now = System.currentTimeMillis()
+                        if (total <= 0 || sent == total || now - last >= 80L) {
+                            last = now
+                            onProgress(sent, total)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun nest(list: List<CategoryItem>): List<CategoryItem> {
@@ -129,5 +185,33 @@ class ApiClient(
         walk(0, 0)
         list.filter { item -> out.none { it.id == item.id } }.forEach { out += it }
         return out
+    }
+}
+
+private class ProgressRequestBody(
+    private val file: File,
+    private val mediaType: MediaType?,
+    private val onProgress: (sent: Long, total: Long) -> Unit
+) : RequestBody() {
+    override fun contentType() = mediaType
+    override fun contentLength() = file.length()
+
+    override fun writeTo(sink: BufferedSink) {
+        val total = contentLength().coerceAtLeast(1L)
+        var sent = 0L
+        var last = 0L
+        file.source().use { source ->
+            while (true) {
+                val read = source.read(sink.buffer, 32 * 1024)
+                if (read == -1L) break
+                sent += read
+                sink.flush()
+                val now = System.currentTimeMillis()
+                if (sent >= total || now - last >= 80L) {
+                    last = now
+                    onProgress(sent.coerceAtMost(total), total)
+                }
+            }
+        }
     }
 }

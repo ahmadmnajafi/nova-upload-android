@@ -2,72 +2,103 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:background="@color/nova_bg">
+    android:background="@color/nova_bg"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layoutDirection="rtl"
         android:orientation="vertical"
-        android:padding="24dp"
-        android:layoutDirection="rtl">
+        android:paddingStart="24dp"
+        android:paddingTop="72dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="32dp">
+
+        <FrameLayout
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:background="@drawable/bg_mark">
+
+            <ImageView
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_upload_mark" />
+        </FrameLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="48dp"
+            android:layout_marginTop="20dp"
+            android:fontFamily="@font/yekanbakh"
+            android:includeFontPadding="false"
             android:text="@string/app_name"
             android:textColor="@color/nova_text"
-            android:textSize="28sp"
+            android:textSize="34sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:layout_marginBottom="28dp"
-            android:text="@string/login_title"
+            android:fontFamily="@font/yekanbakh"
+            android:text="@string/login_subtitle"
             android:textColor="@color/nova_muted"
-            android:textSize="14sp" />
+            android:textSize="17sp" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/phone_hint">
+
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/inputPhone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:fontFamily="@font/yekanbakh"
+                android:gravity="right"
                 android:inputType="phone"
-                android:maxLength="11" />
+                android:maxLength="11"
+                android:textColor="@color/nova_text"
+                android:textDirection="ltr"
+                android:textSize="17sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSendCode"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="12dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="16dp"
             android:text="@string/send_code" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/boxCode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="16dp"
             android:hint="@string/code_hint"
             android:visibility="gone">
+
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/inputCode"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:fontFamily="@font/yekanbakh"
+                android:gravity="right"
                 android:inputType="number"
-                android:maxLength="4" />
+                android:maxLength="4"
+                android:textColor="@color/nova_text"
+                android:textDirection="ltr"
+                android:textSize="17sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnVerify"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="50dp"
             android:layout_marginTop="12dp"
             android:text="@string/verify_code"
             android:visibility="gone" />
@@ -77,7 +108,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:fontFamily="@font/yekanbakh"
             android:textColor="@color/nova_muted"
-            android:textSize="13sp" />
+            android:textSize="15sp" />
     </LinearLayout>
 </ScrollView>

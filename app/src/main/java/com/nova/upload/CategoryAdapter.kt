@@ -1,9 +1,10 @@
 package com.nova.upload
 
-import android.graphics.Typeface
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.nova.upload.databinding.ItemCategoryBinding
 
@@ -36,20 +37,25 @@ class CategoryAdapter(
 
     inner class VH(private val binding: ItemCategoryBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: CategoryItem) {
-            val pad = "— ".repeat(item.depth.coerceAtMost(4))
-            binding.txtName.text = pad + item.name
+            val density = binding.root.resources.displayMetrics.density
+            val extra = (item.depth.coerceAtMost(4) * 16 * density).toInt()
+            binding.txtName.setPaddingRelative(extra, 0, 0, 0)
+            binding.txtName.text = item.name
             val selected = item.id == selectedId
-            binding.root.strokeColor = ContextCompat.getColor(
-                binding.root.context,
-                if (selected) R.color.nova_primary else R.color.nova_border
-            )
+            val context = binding.root.context
+            binding.root.strokeWidth = if (selected) (2 * density).toInt() else 0
+            binding.root.strokeColor = ContextCompat.getColor(context, R.color.nova_primary)
             binding.root.setCardBackgroundColor(
                 ContextCompat.getColor(
-                    binding.root.context,
+                    context,
                     if (selected) R.color.nova_primary_soft else R.color.nova_surface
                 )
             )
-            binding.txtName.setTypeface(null, if (selected) Typeface.BOLD else Typeface.NORMAL)
+            binding.txtName.typeface = ResourcesCompat.getFont(
+                context,
+                if (selected) R.font.yekanbakh_bold else R.font.yekanbakh_regular
+            )
+            binding.imgCheck.visibility = if (selected) View.VISIBLE else View.GONE
             binding.root.setOnClickListener { onClick(item) }
         }
     }
