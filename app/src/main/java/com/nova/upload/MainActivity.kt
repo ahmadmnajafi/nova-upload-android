@@ -19,7 +19,6 @@ import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -246,10 +245,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun formatSize(bytes: Long): String {
         val gb = bytes / (1024.0 * 1024.0 * 1024.0)
-        val text = if (gb >= 1) {
-            String.format(java.util.Locale.US, "%.1f گیگابایت", gb)
-        } else {
-            String.format(java.util.Locale.US, "%.0f مگابایت", bytes / (1024.0 * 1024.0))
+        val mb = bytes / (1024.0 * 1024.0)
+        val text = when {
+            gb >= 1 -> String.format(java.util.Locale.US, "%.1f گیگابایت", gb)
+            mb >= 1 -> String.format(java.util.Locale.US, "%.1f مگابایت", mb)
+            else -> String.format(java.util.Locale.US, "%.0f کیلوبایت", bytes / 1024.0)
         }
         return faText(text)
     }
@@ -432,17 +432,24 @@ class MainActivity : AppCompatActivity() {
                                     return@forEachIndexed
                                 }
                             }
-                            showSend(name, "ارسال ${fa(index + 1)} از ${fa(uris.size)}", indeterminate = false, percent = 0)
+                            val sizeLabel = formatSize(file.length())
+                            showSend(
+                                name,
+                                "ارسال ${fa(index + 1)} از ${fa(uris.size)} · $sizeLabel",
+                                indeterminate = false,
+                                percent = 0
+                            )
                             withContext(Dispatchers.IO) {
                                 app.api.uploadFile(token, catId, file, mime, name) { sent, total ->
                                     val fraction = if (total > 0) sent.toFloat() / total else 0f
                                     val overall = (((index + fraction) / uris.size) * 100).toInt().coerceIn(0, 100)
                                     val filePercent = (fraction * 100).toInt().coerceIn(0, 100)
+                                    val moved = if (total > 0) "${formatSize(sent)} از ${formatSize(total)}" else sizeLabel
                                     runOnUiThread {
                                         if (!userCancelled) {
                                             showSend(
                                                 name,
-                                                "ارسال ${fa(index + 1)} از ${fa(uris.size)} · ${fa(filePercent)}٪",
+                                                "ارسال ${fa(index + 1)} از ${fa(uris.size)} · $moved · ${fa(filePercent)}٪",
                                                 indeterminate = false,
                                                 percent = overall
                                             )
@@ -757,7 +764,7 @@ class MainActivity : AppCompatActivity() {
         if (ch in '0'..'9') "۰۱۲۳۴۵۶۷۸۹"[ch - '0'] else ch
     }.joinToString("")
 
-    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+    private fun toast(msg: String) = novaToast(msg)
 
     companion object {
         const val EXTRA_PENDING_URIS = "pending_uris"
