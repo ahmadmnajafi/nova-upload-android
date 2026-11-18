@@ -19,15 +19,6 @@
         android:textSize="18sp"
         android:textStyle="bold" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:fontFamily="@font/yekanbakh"
-        android:text="@string/dup_hint"
-        android:textColor="@color/nova_muted"
-        android:textSize="13sp" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -92,7 +83,9 @@
                 android:ellipsize="end"
                 android:fontFamily="@font/yekanbakh"
                 android:maxLines="2"
+                android:textAlignment="viewStart"
                 android:textColor="@color/nova_text"
+                android:textDirection="ltr"
                 android:textSize="13sp" />
         </LinearLayout>
 
@@ -154,7 +147,9 @@
                 android:ellipsize="end"
                 android:fontFamily="@font/yekanbakh"
                 android:maxLines="2"
+                android:textAlignment="viewStart"
                 android:textColor="@color/nova_text"
+                android:textDirection="ltr"
                 android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>

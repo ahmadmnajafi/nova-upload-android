@@ -29,8 +29,8 @@
     <string name="login_password">ورود</string>
     <string name="share_ready">فایل‌های اشتراک‌گذاری‌شده آماده‌اند. دسته را انتخاب کنید.</string>
     <string name="no_cats">هنوز دسته‌بندی ندارید. اول در پنل وب یک دسته بسازید.</string>
+    <string name="share_pick_category">فایل آمده است. اول دسته‌بندی را انتخاب کنید.</string>
     <string name="dup_title">این فایل قبلاً در گالری هست</string>
-    <string name="dup_hint">هر دو را ببینید و برای همین فایل تصمیم بگیرید.</string>
     <string name="dup_new">فایل جدید</string>
     <string name="dup_old">فایل موجود</string>
     <string name="dup_accept">تایید و ارسال</string>

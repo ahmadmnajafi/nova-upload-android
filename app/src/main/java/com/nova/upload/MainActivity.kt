@@ -5,7 +5,9 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.drawable.ColorDrawable
+import android.media.ExifInterface
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
@@ -49,6 +51,7 @@ class MainActivity : AppCompatActivity() {
     private var transferJob: Job? = null
     private var pendingApk: File? = null
     private var pendingRelease: AppRelease? = null
+    private var sharedHold = false
     private var sheet: BottomSheetDialog? = null
     private var sheetBinding: SheetSendBinding? = null
 
@@ -83,6 +86,10 @@ class MainActivity : AppCompatActivity() {
             adapter.selectedId = cat.id
             app.session.lastCategoryId = cat.id
             updateUploadEnabled()
+            if (sharedHold && pendingUris.isNotEmpty() && !busy) {
+                sharedHold = false
+                openSendSheet()
+            }
         }
         binding.listCats.layoutManager = LinearLayoutManager(this)
         binding.listCats.adapter = adapter
@@ -129,19 +136,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun ingestIntent(intent: Intent?) {
         val shared = collectShareUris(intent)
+        var incoming = false
         if (shared.isNotEmpty()) {
             pendingUris.clear()
             pendingUris.addAll(shared)
+            incoming = true
         }
         intent?.getParcelableArrayListExtra<Uri>(EXTRA_PENDING_URIS)?.let {
             if (it.isNotEmpty()) {
                 pendingUris.clear()
                 pendingUris.addAll(it)
+                incoming = true
             }
+        }
+        if (incoming) {
+            sharedHold = true
+            if (::adapter.isInitialized) adapter.selectedId = 0
+            toast("اول دسته‌بندی را انتخاب کنید")
         }
         refreshHint()
         updateUploadEnabled()
-        if (pendingUris.isNotEmpty() && !busy) openSendSheet()
     }
 
     private fun collectShareUris(intent: Intent?): ArrayList<Uri> {
@@ -180,8 +194,10 @@ class MainActivity : AppCompatActivity() {
                 binding.txtKioskCode.text = faText(home.kioskCode.ifBlank { "—" })
                 showStorage(home.usedBytes, home.limitBytes)
                 adapter.submit(home.categories)
-                val last = app.session.lastCategoryId
-                if (last > 0 && home.categories.any { it.id == last }) adapter.selectedId = last
+                if (!sharedHold) {
+                    val last = app.session.lastCategoryId
+                    if (last > 0 && home.categories.any { it.id == last }) adapter.selectedId = last
+                }
                 binding.txtStatus.text = if (home.categories.isEmpty()) getString(R.string.no_cats) else ""
                 updateUploadEnabled()
                 if (fromUser) toast("دسته‌ها بروزرسانی شد")
@@ -314,6 +330,7 @@ class MainActivity : AppCompatActivity() {
         if (!::binding.isInitialized) return
         val hasCat = ::adapter.isInitialized && adapter.selectedId > 0
         binding.txtHint.text = when {
+            pendingUris.isNotEmpty() && !hasCat -> getString(R.string.share_pick_category)
             pendingUris.isNotEmpty() -> getString(R.string.files_ready, fa(pendingUris.size))
             hasCat -> getString(R.string.pick_files_next)
             else -> getString(R.string.pick_category)
@@ -435,7 +452,9 @@ class MainActivity : AppCompatActivity() {
         b.fileList.removeAllViews()
         pendingUris.take(6).forEach { uri ->
             val row = android.widget.TextView(this)
-            row.text = queryDisplayName(uri) ?: "فایل"
+            row.textDirection = View.TEXT_DIRECTION_LTR
+            row.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+            row.text = fileLabel(queryDisplayName(uri) ?: "فایل")
             row.setTextColor(ContextCompat.getColor(this, R.color.nova_text))
             row.textSize = 15f
             row.setPadding(0, 12, 0, 12)
@@ -470,6 +489,7 @@ class MainActivity : AppCompatActivity() {
         dialog.setOnDismissListener {
             if (!busy) {
                 pendingUris.clear()
+                sharedHold = false
                 sheet = null
                 sheetBinding = null
                 if (::binding.isInitialized) {
@@ -497,9 +517,11 @@ class MainActivity : AppCompatActivity() {
                 image.outlineProvider = ViewOutlineProvider.BACKGROUND
             }
             b.txtNewCat.text = adapter.selectedName().ifBlank { "—" }
-            b.txtNewName.text = name
+            b.txtNewName.textDirection = View.TEXT_DIRECTION_LTR
+            b.txtNewName.text = fileLabel(name)
             b.txtOldCat.text = dup.categories
-            b.txtOldName.text = dup.title
+            b.txtOldName.textDirection = View.TEXT_DIRECTION_LTR
+            b.txtOldName.text = fileLabel(dup.title)
             fun finish(accept: Boolean) {
                 if (cont.isActive) cont.resume(accept) {}
                 dialog.dismiss()
@@ -553,17 +575,55 @@ class MainActivity : AppCompatActivity() {
     private fun decodeFile(path: String): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, bounds)
-        return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply {
+        val bitmap = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply {
             inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight)
-        })
+        }) ?: return null
+        val orientation = try {
+            ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        } catch (_: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+        return applyOrientation(bitmap, orientation)
     }
 
     private fun decodeBytes(bytes: ByteArray): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply {
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply {
             inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight)
-        })
+        }) ?: return null
+        val orientation = try {
+            ExifInterface(bytes.inputStream()).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+        } catch (_: Exception) {
+            ExifInterface.ORIENTATION_NORMAL
+        }
+        return applyOrientation(bitmap, orientation)
+    }
+
+    private fun applyOrientation(bitmap: Bitmap, orientation: Int): Bitmap {
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.postRotate(90f)
+                matrix.preScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.postRotate(270f)
+                matrix.preScale(-1f, 1f)
+            }
+            else -> return bitmap
+        }
+        val turned = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (turned != bitmap) bitmap.recycle()
+        return turned
     }
 
     private fun sampleSize(width: Int, height: Int): Int {
@@ -643,6 +703,8 @@ class MainActivity : AppCompatActivity() {
             msg
         }
     }
+
+    private fun fileLabel(name: String): String = "\u2066$name\u2069"
 
     private fun fa(n: Int): String = faText(n.toString())
 
